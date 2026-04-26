@@ -1,0 +1,23 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy monorepo root files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+
+# Copy package-level package.json
+COPY packages/web/package.json ./packages/web/
+
+# Install dependencies (cached layer)
+RUN pnpm install --frozen-lockfile
+
+# Copy web source
+COPY packages/web/ ./packages/web/
+
+WORKDIR /app/packages/web
+
+EXPOSE 5173
+
+CMD ["pnpm", "dev", "--host"]

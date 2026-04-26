@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.env
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+mysql_data/
+
+# Legacy folders (keep but don't track)
+obulus-api/
+obulus-web/
+at.troop.obulus/
+at.troop.obulus.api/
+d025d88e.sql

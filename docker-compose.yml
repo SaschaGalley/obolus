@@ -1,0 +1,67 @@
+services:
+  mysql:
+    image: mariadb:10.6
+    ports:
+      - "${PORT_MYSQL:-8552}:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: d025d88e
+      MARIADB_USER: obulus
+      MARIADB_PASSWORD: obulus_dev
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init/000-create-db.sql:/docker-entrypoint-initdb.d/000-create-db.sql:ro
+      - ./d025d88e.sql:/docker-entrypoint-initdb.d/001-data.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile.dev
+    volumes:
+      - ./packages/api:/app/packages/api
+      - api_node_modules:/app/packages/api/node_modules
+      - root_node_modules:/app/node_modules
+    ports:
+      - "${PORT_API:-8551}:3000"
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
+      TSC_WATCHFILE: UsePolling
+      TSC_WATCHDIRECTORY: UsePolling
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USER: obulus
+      DATABASE_PASSWORD: obulus_dev
+      DATABASE_NAME: d025d88e
+      JWT_SECRET: dev-secret-change-in-production-min-32-chars
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile.dev
+    volumes:
+      - ./packages/web/src:/app/packages/web/src
+      - ./packages/web/index.html:/app/packages/web/index.html
+      - ./packages/web/vite.config.ts:/app/packages/web/vite.config.ts
+      - ./packages/web/tsconfig.json:/app/packages/web/tsconfig.json
+      - ./packages/web/tsconfig.app.json:/app/packages/web/tsconfig.app.json
+    ports:
+      - "${PORT_WEB:-8550}:5173"
+    environment:
+      VITE_API_URL: http://localhost:${PORT_API:-8551}
+    depends_on: ["api"]
+
+volumes:
+  mysql_data:
+  api_node_modules:
+  root_node_modules:

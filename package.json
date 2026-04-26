@@ -1,0 +1,16 @@
+{
+  "name": "obulus",
+  "private": true,
+  "scripts": {
+    "dev": "docker compose up",
+    "dev:build": "docker compose up --build",
+    "prod:build": "docker compose -f docker-compose.prod.yml build",
+    "api:dev": "pnpm --filter @obulus/api start:dev",
+    "web:dev": "pnpm --filter @obulus/web dev",
+    "generate-api": "pnpm --filter @obulus/web generate-api"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

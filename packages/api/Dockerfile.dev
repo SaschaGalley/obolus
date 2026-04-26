@@ -1,0 +1,28 @@
+FROM node:20-alpine
+
+# Chromium for Puppeteer PDF generation
+RUN apk add --no-cache chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy monorepo root files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+
+# Copy package-level package.json
+COPY packages/api/package.json ./packages/api/
+
+# Install dependencies (cached layer)
+RUN pnpm install --frozen-lockfile
+
+# Copy API source
+COPY packages/api/ ./packages/api/
+
+WORKDIR /app/packages/api
+
+EXPOSE 3000
+
+CMD ["pnpm", "start:dev"]
