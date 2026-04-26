@@ -22,7 +22,7 @@ RUN pnpm run build
 
 FROM node:20-alpine AS runner
 
-WORKDIR /app
+WORKDIR /app/packages/api
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -31,10 +31,10 @@ RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefo
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-COPY --from=builder /app/packages/api/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/packages/api/node_modules ./node_modules
 COPY --from=builder /app/packages/api/package.json ./package.json
+COPY --from=builder /app/packages/api/dist ./dist
 COPY --from=builder /app/packages/api/src/pdf/templates ./dist/pdf/templates
 
 EXPOSE 3000

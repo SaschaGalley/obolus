@@ -12,7 +12,7 @@ services:
       DATABASE_NAME: ${DATABASE_NAME}
       JWT_SECRET: ${JWT_SECRET}
     volumes:
-      - api_uploads:/app/uploads
+      - api_uploads:/app/packages/api/uploads
     restart: unless-stopped
 
   web:
