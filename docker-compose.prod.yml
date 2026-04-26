@@ -1,8 +1,8 @@
 services:
   api:
     build:
-      context: ./packages/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/api/Dockerfile
     environment:
       NODE_ENV: production
       DATABASE_HOST: ${DATABASE_HOST}
@@ -20,8 +20,8 @@ services:
 
   web:
     build:
-      context: ./packages/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/web/Dockerfile
       args:
         VITE_API_URL: ${API_URL}
     restart: unless-stopped
