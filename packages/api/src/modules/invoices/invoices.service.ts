@@ -126,7 +126,7 @@ export class InvoicesService {
     ];
     for (const f of fields) {
       if (dto[f] !== undefined && (invoice as any)[f] !== dto[f]) {
-        dirty[f] = dto[f];
+        dirty[f] = { from: (invoice as any)[f], to: dto[f] };
         (invoice as any)[f] = dto[f];
       }
     }

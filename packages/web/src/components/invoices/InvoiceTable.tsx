@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, Tag } from 'antd';
+import { Table, Tag, Space } from 'antd';
 import dayjs from 'dayjs';
 import { formatCurrency, formatDate, getInvoiceStatus } from '../../utils/format';
+import EntityAvatar from '../EntityAvatar';
 
 export type InvoiceColumn =
   | 'number' | 'client' | 'sentAt' | 'dueDate' | 'status' | 'amount';
@@ -32,8 +33,24 @@ export default function InvoiceTable({
   const enabled = (columns ?? ALL_COLUMNS).filter((c) => !(hideClient && c === 'client'));
 
   const colDefs: Record<InvoiceColumn, any> = {
-    number: { title: 'Nummer', dataIndex: 'number', key: 'number' },
-    client: { title: 'Kunde', dataIndex: 'clientName', key: 'clientName' },
+    number: {
+      title: 'Nummer', dataIndex: 'number', key: 'number',
+      render: (number: string, record: any) => (
+        <Space>
+          <EntityAvatar name={record.clientName || '?'} picture={record.client?.picture} size={28} />
+          {number}
+        </Space>
+      ),
+    },
+    client: {
+      title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
+      render: (name: string, record: any) => (
+        <Space>
+          <EntityAvatar name={name || '?'} picture={record.client?.picture} size={28} />
+          {name}
+        </Space>
+      ),
+    },
     sentAt: {
       title: 'Datum', dataIndex: 'sentAt', key: 'sentAt', width: 120,
       render: (v: any) => formatDate(v),

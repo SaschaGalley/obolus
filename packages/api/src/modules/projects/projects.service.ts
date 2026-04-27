@@ -113,7 +113,7 @@ export class ProjectsService {
     ];
     for (const f of fields) {
       if (dto[f] !== undefined && (project as any)[f] !== dto[f]) {
-        dirty[f] = dto[f];
+        dirty[f] = { from: (project as any)[f], to: dto[f] };
         (project as any)[f] = dto[f];
       }
     }

@@ -14,7 +14,9 @@ import {
   useProject, useUpdateProject, useTasks, useCreateTask, useUpdateTask,
   useDeleteTask, useReorderTasks, useSessions, useCreateSession,
   useUpdateSession, useDeleteSession, useCreateInvoice, useInvoices,
+  useUploadProjectPicture,
 } from '../../hooks/useApi';
+import EntityAvatar from '../../components/EntityAvatar';
 import { projectsApi } from '../../api/client';
 import { formatDate } from '../../utils/format';
 import TaskTable from '../../components/tasks/TaskTable';
@@ -43,6 +45,7 @@ export default function ProjectDetailPage() {
   const [editForm] = Form.useForm();
 
   const updateProject = useUpdateProject();
+  const uploadPicture = useUploadProjectPicture();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -180,10 +183,20 @@ export default function ProjectDetailPage() {
         { title: project.name },
       ]} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0' }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>{project.name}</Title>
-          {project.client && <Link to={`/clients/${project.client.id}`}><Text type="secondary">{project.client.name}</Text></Link>}
-        </div>
+        <Space align="center">
+          <EntityAvatar
+            name={project.name}
+            picture={project.picture}
+            fallbackPicture={project.client?.picture}
+            size={48}
+            onUpload={(file) => uploadPicture.mutate({ id: projectId, file })}
+            uploading={uploadPicture.isPending}
+          />
+          <div>
+            <Title level={3} style={{ margin: 0 }}>{project.name}</Title>
+            {project.client && <Link to={`/clients/${project.client.id}`}><Text type="secondary">{project.client.name}</Text></Link>}
+          </div>
+        </Space>
         <Space>
           <Button icon={<PlusOutlined />} onClick={() => openTaskForm()}>Task hinzufügen</Button>
           <Button icon={<FilePdfOutlined />} onClick={() => { quoteForm.resetFields(); setQuoteDrawer(true); }}>
@@ -251,6 +264,16 @@ export default function ProjectDetailPage() {
         }
       >
         <Form form={editForm} layout="vertical" onFinish={handleEditSubmit}>
+          <Form.Item label="Bild">
+            <EntityAvatar
+              name={project.name}
+              picture={project.picture}
+              fallbackPicture={project.client?.picture}
+              size={64}
+              onUpload={(file) => uploadPicture.mutate({ id: projectId, file })}
+              uploading={uploadPicture.isPending}
+            />
+          </Form.Item>
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>

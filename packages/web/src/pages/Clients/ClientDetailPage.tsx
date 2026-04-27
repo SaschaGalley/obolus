@@ -10,7 +10,9 @@ import {
 } from '@ant-design/icons';
 import {
   useClient, useUpdateClient, useProjects, useInvoices, useClientActivities,
+  useUploadClientPicture,
 } from '../../hooks/useApi';
+import EntityAvatar from '../../components/EntityAvatar';
 import { formatCurrency } from '../../utils/format';
 import ProjectTable from '../../components/projects/ProjectTable';
 import InvoiceTable from '../../components/invoices/InvoiceTable';
@@ -27,6 +29,7 @@ export default function ClientDetailPage() {
 
   const client = useClient(clientId);
   const updateClient = useUpdateClient();
+  const uploadPicture = useUploadClientPicture();
   const projects = useProjects({ clientId, show: 'all' });
   const invoices = useInvoices();
   const activities = useClientActivities(clientId);
@@ -35,6 +38,11 @@ export default function ClientDetailPage() {
   const [projectFilter, setProjectFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
+
+  const clientActivities = useMemo(
+    () => (activities.data || []).filter((a: any) => a.logableType === 'Client'),
+    [activities.data],
+  );
 
   const allProjects = projects.data || [];
   const activeProjects = useMemo(
@@ -102,9 +110,9 @@ export default function ClientDetailPage() {
       Alle ({clientInvoices.length}) <ArrowRightOutlined />
     </Button>
   );
-  const activitiesCardExtra = activities.data && activities.data.length > 0 && (
+  const activitiesCardExtra = clientActivities.length > 0 && (
     <Button type="link" size="small" onClick={goToTab('activities')}>
-      Alle ({activities.data.length}) <ArrowRightOutlined />
+      Alle ({(activities.data || []).length}) <ArrowRightOutlined />
     </Button>
   );
 
@@ -143,11 +151,11 @@ export default function ClientDetailPage() {
         >
           {activities.isLoading ? (
             <Spin />
-          ) : (activities.data || []).length === 0 ? (
+          ) : clientActivities.length === 0 ? (
             <Empty description="Keine Aktivitäten" />
           ) : (
             <ActivityTable
-              activities={(activities.data || []).slice(0, PREVIEW_LIMIT)}
+              activities={clientActivities.slice(0, PREVIEW_LIMIT)}
               clientName={data.name}
             />
           )}
@@ -226,7 +234,16 @@ export default function ClientDetailPage() {
       />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>{data.name}</Title>
+        <Space align="center">
+          <EntityAvatar
+            name={data.name}
+            picture={data.picture}
+            size={48}
+            onUpload={(file) => uploadPicture.mutate({ id: clientId, file })}
+            uploading={uploadPicture.isPending}
+          />
+          <Title level={3} style={{ margin: 0 }}>{data.name}</Title>
+        </Space>
         <Space>
           <Button icon={<EditOutlined />} onClick={handleEdit}>Bearbeiten</Button>
           <Popconfirm
@@ -267,6 +284,15 @@ export default function ClientDetailPage() {
         }
       >
         <Form form={form} layout="vertical" onFinish={handleUpdate}>
+          <Form.Item label="Bild">
+            <EntityAvatar
+              name={data.name}
+              picture={data.picture}
+              size={64}
+              onUpload={(file) => uploadPicture.mutate({ id: clientId, file })}
+              uploading={uploadPicture.isPending}
+            />
+          </Form.Item>
           <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name ist erforderlich' }]}>
             <Input />
           </Form.Item>

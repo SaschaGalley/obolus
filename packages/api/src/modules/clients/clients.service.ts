@@ -102,7 +102,7 @@ export class ClientsService {
     ];
     for (const f of fields) {
       if (dto[f] !== undefined && (client as any)[f] !== dto[f]) {
-        dirty[f] = dto[f];
+        dirty[f] = { from: (client as any)[f], to: dto[f] };
         (client as any)[f] = dto[f];
       }
     }

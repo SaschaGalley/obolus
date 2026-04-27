@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, Tag } from 'antd';
+import { Table, Tag, Space } from 'antd';
 import { formatCurrency } from '../../utils/format';
+import EntityAvatar from '../EntityAvatar';
 
 export type ProjectColumn =
   | 'name' | 'client' | 'total' | 'unbilled' | 'billed' | 'status';
@@ -36,6 +37,17 @@ export default function ProjectTable({
       dataIndex: 'name',
       key: 'name',
       sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || ''),
+      render: (name: string, record: any) => (
+        <Space>
+          <EntityAvatar
+            name={name}
+            picture={record.picture}
+            fallbackPicture={record.client?.picture}
+            size={28}
+          />
+          {name}
+        </Space>
+      ),
     },
     client: {
       title: 'Kunde',

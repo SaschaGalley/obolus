@@ -18,6 +18,7 @@ import {
 import { PlusOutlined } from '@ant-design/icons';
 import { useClients, useCreateClient } from '../../hooks/useApi';
 import { formatCurrency } from '../../utils/format';
+import EntityAvatar from '../../components/EntityAvatar';
 
 const { Title } = Typography;
 
@@ -36,6 +37,12 @@ export default function ClientsListPage() {
       dataIndex: 'name',
       key: 'name',
       sorter: (a: any, b: any) => a.name.localeCompare(b.name),
+      render: (name: string, record: any) => (
+        <Space>
+          <EntityAvatar name={name} picture={record.picture} size={28} />
+          {name}
+        </Space>
+      ),
     },
     {
       title: 'Gesamt',

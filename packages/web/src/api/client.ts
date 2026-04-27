@@ -49,6 +49,13 @@ export const clientsApi = {
     apiClient.patch(`/clients/${id}`, data),
   remove: (id: number) =>
     apiClient.delete(`/clients/${id}`),
+  uploadPicture: (id: number, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post(`/clients/${id}/picture`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Projects
@@ -65,6 +72,13 @@ export const projectsApi = {
     apiClient.delete(`/projects/${id}`),
   downloadQuote: (id: number, params?: { title?: string; showHours?: boolean }) =>
     apiClient.get(`/projects/${id}/quote`, { params, responseType: 'blob' }),
+  uploadPicture: (id: number, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post(`/projects/${id}/picture`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Tasks

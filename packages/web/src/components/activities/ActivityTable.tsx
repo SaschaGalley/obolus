@@ -56,6 +56,13 @@ const FIELD_LABELS: Record<string, string> = {
 
 const labelField = (k: string) => FIELD_LABELS[k] || k;
 
+function formatValue(v: any): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'boolean') return v ? 'Ja' : 'Nein';
+  const s = String(v);
+  return s.length > 60 ? s.slice(0, 57) + '…' : s;
+}
+
 export interface ActivityTableProps {
   activities: any[];
   loading?: boolean;
@@ -63,6 +70,7 @@ export interface ActivityTableProps {
   pageSize?: number;
   size?: 'small' | 'middle' | 'large';
   showFooterLink?: React.ReactNode;
+  hideTasks?: boolean;
 }
 
 export default function ActivityTable({
@@ -71,7 +79,11 @@ export default function ActivityTable({
   clientName,
   pageSize,
   size = 'small',
+  hideTasks = true,
 }: ActivityTableProps) {
+  const filtered = hideTasks
+    ? activities.filter((a) => a.logableType !== 'Task' && a.logableType !== 'Session')
+    : activities;
   const navigate = useNavigate();
 
   const onRowClick = (a: any) => {
@@ -86,6 +98,8 @@ export default function ActivityTable({
     },
     {
       title: 'Typ', key: 'logableType', width: 100,
+      filters: Object.entries(TYPE_LABELS).map(([k, v]) => ({ text: v, value: k })),
+      onFilter: (value: any, r: any) => r.logableType === value,
       render: (_: any, r: any) => TYPE_LABELS[r.logableType] || r.logableType,
     },
     {
@@ -97,6 +111,8 @@ export default function ActivityTable({
     },
     {
       title: 'Aktion', dataIndex: 'activityType', key: 'activityType', width: 110,
+      filters: Object.entries(ACTIVITY_LABELS).map(([k, v]) => ({ text: v, value: k })),
+      onFilter: (value: any, r: any) => r.activityType === value,
       render: (v: string) => (
         <Tag color={ACTIVITY_COLORS[v] || 'default'}>
           {ACTIVITY_LABELS[v] || v}
@@ -104,15 +120,33 @@ export default function ActivityTable({
       ),
     },
     {
-      title: 'Felder', dataIndex: 'values', key: 'values',
+      title: 'Änderungen', dataIndex: 'values', key: 'values',
       render: (v: any) => {
         if (!v || typeof v !== 'object') return null;
         const keys = Object.keys(v);
         if (keys.length === 0) return null;
         return (
-          <span style={{ fontSize: 12, color: '#888' }}>
-            {keys.map(labelField).join(', ')}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {keys.map((k) => {
+              const entry = v[k];
+              const label = labelField(k);
+              if (entry && typeof entry === 'object' && 'from' in entry && 'to' in entry) {
+                return (
+                  <span key={k} style={{ fontSize: 12 }}>
+                    <span style={{ color: '#888' }}>{label}: </span>
+                    <span style={{ color: '#cf1322' }}>{formatValue(entry.from)}</span>
+                    <span style={{ color: '#888' }}> → </span>
+                    <span style={{ color: '#389e0d' }}>{formatValue(entry.to)}</span>
+                  </span>
+                );
+              }
+              return (
+                <span key={k} style={{ fontSize: 12, color: '#888' }}>
+                  {label}: {formatValue(entry)}
+                </span>
+              );
+            })}
+          </div>
         );
       },
     },
@@ -124,7 +158,7 @@ export default function ActivityTable({
 
   return (
     <Table
-      dataSource={activities}
+      dataSource={filtered}
       columns={columns}
       rowKey="id"
       loading={loading}

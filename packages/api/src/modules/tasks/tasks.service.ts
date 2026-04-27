@@ -97,7 +97,7 @@ export class TasksService {
     ];
     for (const f of fields) {
       if (dto[f] !== undefined && (task as any)[f] !== dto[f]) {
-        dirty[f] = dto[f];
+        dirty[f] = { from: (task as any)[f], to: dto[f] };
         (task as any)[f] = dto[f];
       }
     }

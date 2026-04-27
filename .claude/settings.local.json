@@ -15,7 +15,8 @@
       "Bash(docker exec:*)",
       "Bash(pnpm --filter @obulus/api build)",
       "Bash(pnpm --filter @obulus/web build)",
-      "Bash(grep -A1 \"obulus_activity\\\\` \\(\\\\`id\\\\`\" /Volumes/storage/workspace/troop/obulus/d025d88e.sql)"
+      "Bash(grep -A1 \"obulus_activity\\\\` \\(\\\\`id\\\\`\" /Volumes/storage/workspace/troop/obulus/d025d88e.sql)",
+      "Bash(pnpm remove *)"
     ]
   }
 }

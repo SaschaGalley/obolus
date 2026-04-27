@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Statistic, Select, Row, Col, Typography, Spin, Empty, Tag } from 'antd';
-import {
-  FileTextOutlined,
-  ProjectOutlined,
-  EuroCircleOutlined,
-  CalculatorOutlined,
-} from '@ant-design/icons';
-import { useDashboard, useAccounting } from '../../hooks/useApi';
+import { Card, Col, Empty, Row, Select, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import { useAccounting, useDashboard } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 
 const { Title } = Typography;
@@ -25,7 +19,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   if (dashboard.isLoading || accounting.isLoading) {
-    return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+    return <Spin size="large" style={{ display: 'block', margin: '100px auto' }}/>;
   }
 
   const stats = dashboard.data;
@@ -80,7 +74,7 @@ export default function DashboardPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Title level={3} style={{ margin: 0 }}>Dashboard</Title>
-        <Select value={year} onChange={setYear} options={yearOptions} style={{ width: 120 }} />
+        <Select value={year} onChange={setYear} options={yearOptions} style={{ width: 120 }}/>
       </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -89,7 +83,6 @@ export default function DashboardPage() {
             <Statistic
               title="Unbezahlte Rechnungen"
               value={stats?.unpaidInvoicesTotal || 0}
-              prefix={<FileTextOutlined />}
               formatter={(v) => formatCurrency(v as number)}
             />
           </Card>
@@ -99,7 +92,6 @@ export default function DashboardPage() {
             <Statistic
               title="Offene Projekte"
               value={stats?.openProjectsCount || 0}
-              prefix={<ProjectOutlined />}
             />
           </Card>
         </Col>
@@ -108,7 +100,6 @@ export default function DashboardPage() {
             <Statistic
               title={`Einnahmen ${year}`}
               value={stats?.revenue || 0}
-              prefix={<EuroCircleOutlined />}
               formatter={(v) => formatCurrency(v as number)}
             />
           </Card>
@@ -118,7 +109,6 @@ export default function DashboardPage() {
             <Statistic
               title={`Netto ${year}`}
               value={stats?.net || 0}
-              prefix={<CalculatorOutlined />}
               formatter={(v) => formatCurrency(v as number)}
             />
           </Card>
@@ -129,7 +119,7 @@ export default function DashboardPage() {
         <Col xs={24} xl={12}>
           <Card title="Unbezahlte Rechnungen" size="small">
             {unpaidInvoices.length === 0 ? (
-              <Empty description="Keine offenen Rechnungen" />
+              <Empty description="Keine offenen Rechnungen"/>
             ) : (
               <Table
                 dataSource={unpaidInvoices}
@@ -148,7 +138,7 @@ export default function DashboardPage() {
         <Col xs={24} xl={12}>
           <Card title="Unverrechnete Projekte" size="small">
             {openProjects.length === 0 ? (
-              <Empty description="Keine offenen Projekte" />
+              <Empty description="Keine offenen Projekte"/>
             ) : (
               <Table
                 dataSource={openProjects}
@@ -170,7 +160,7 @@ export default function DashboardPage() {
         <Col xs={24} xl={16}>
           <Card title="Kunden-Übersicht">
             {clients.length === 0 ? (
-              <Empty description="Keine Daten vorhanden" />
+              <Empty description="Keine Daten vorhanden"/>
             ) : (
               <Table
                 dataSource={clients}
@@ -203,16 +193,16 @@ export default function DashboardPage() {
           <Card title={`Buchhaltung ${year}`}>
             <Row gutter={[16, 16]}>
               <Col span={12}>
-                <Statistic title="Einnahmen" value={acc?.revenue || 0} formatter={(v) => formatCurrency(v as number)} />
+                <Statistic title="Einnahmen" value={acc?.revenue || 0} formatter={(v) => formatCurrency(v as number)}/>
               </Col>
               <Col span={12}>
-                <Statistic title="Basispauschalierung" value={acc?.flatRate || 0} formatter={(v) => formatCurrency(v as number)} />
+                <Statistic title="Basispauschalierung" value={acc?.flatRate || 0} formatter={(v) => formatCurrency(v as number)}/>
               </Col>
               <Col span={12}>
-                <Statistic title="SVA" value={acc?.sva || 0} formatter={(v) => formatCurrency(v as number)} />
+                <Statistic title="SVA" value={acc?.sva || 0} formatter={(v) => formatCurrency(v as number)}/>
               </Col>
               <Col span={12}>
-                <Statistic title="ESt" value={acc?.est || 0} formatter={(v) => formatCurrency(v as number)} />
+                <Statistic title="ESt" value={acc?.est || 0} formatter={(v) => formatCurrency(v as number)}/>
               </Col>
               <Col span={24}>
                 <Statistic

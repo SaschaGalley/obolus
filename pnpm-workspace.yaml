@@ -6,3 +6,5 @@ ignoredBuiltDependencies:
   - '@scarf/scarf'
   - esbuild
   - puppeteer
+onlyBuiltDependencies:
+  - sharp

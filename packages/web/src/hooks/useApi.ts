@@ -53,6 +53,15 @@ export function useDeleteClient() {
   });
 }
 
+export function useUploadClientPicture() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      clientsApi.uploadPicture(id, file).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+  });
+}
+
 // Projects
 export function useProjects(params?: { show?: string; clientId?: number }) {
   return useQuery({
@@ -89,6 +98,15 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => projectsApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
+}
+
+export function useUploadProjectPicture() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      projectsApi.uploadPicture(id, file).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });
 }

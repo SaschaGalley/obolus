@@ -25,4 +25,4 @@ WORKDIR /app/packages/api
 
 EXPOSE 3000
 
-CMD ["pnpm", "start:dev"]
+CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm start:dev"]
