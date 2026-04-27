@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Image } from '../../database/entities';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as sharp from 'sharp';
 
 @Injectable()
 export class ImagesService {
@@ -13,10 +14,16 @@ export class ImagesService {
     @InjectRepository(Image)
     private readonly imageRepo: Repository<Image>,
   ) {
-    // Ensure uploads directory exists
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
     }
+  }
+
+  async resizeFile(filepath: string): Promise<void> {
+    const buffer = await sharp(filepath)
+      .resize(200, 200, { fit: 'cover' })
+      .toBuffer();
+    fs.writeFileSync(filepath, buffer);
   }
 
   async findAll(userId: number) {
@@ -27,6 +34,7 @@ export class ImagesService {
   }
 
   async upload(userId: number, file: Express.Multer.File) {
+    await this.resizeFile(file.path);
     const image = this.imageRepo.create({
       userId,
       filename: file.filename,

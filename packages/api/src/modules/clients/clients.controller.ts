@@ -8,12 +8,16 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { uploadStorage } from '../../common/upload.storage';
 import { User } from '../../database/entities';
 
 @ApiTags('Clients')
@@ -50,6 +54,23 @@ export class ClientsController {
   @Delete(':id')
   remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
     return this.service.remove(user.id, id);
+  }
+
+  @Post(':id/picture')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file', { storage: uploadStorage }))
+  uploadPicture(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.service.uploadPicture(user.id, id, file);
   }
 
   @Post(':id/recalculate')

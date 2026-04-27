@@ -11,10 +11,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { join } from 'path';
 import { Response } from 'express';
-import { v4 as uuid } from 'uuid';
+import { uploadStorage } from '../../common/upload.storage';
 import { ImagesService } from './images.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../../database/entities';
@@ -39,17 +38,7 @@ export class ImagesController {
       properties: { file: { type: 'string', format: 'binary' } },
     },
   })
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: join(process.cwd(), 'uploads'),
-        filename: (_req, file, cb) => {
-          const uniqueName = `${uuid()}${extname(file.originalname)}`;
-          cb(null, uniqueName);
-        },
-      }),
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', { storage: uploadStorage }))
   upload(@CurrentUser() user: User, @UploadedFile() file: Express.Multer.File) {
     return this.service.upload(user.id, file);
   }

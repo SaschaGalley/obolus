@@ -5,6 +5,7 @@ import { Client, Project, Task, Session } from '../../database/entities';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ActivityLoggerService } from '../activities/activity-logger.service';
+import { ImagesService } from '../images/images.service';
 
 @Injectable()
 export class ProjectsService {
@@ -16,6 +17,7 @@ export class ProjectsService {
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
     private readonly activityLogger: ActivityLoggerService,
+    private readonly imagesService: ImagesService,
   ) {}
 
   async findAll(userId: number, filters: { show?: string; clientId?: number } = {}) {
@@ -120,6 +122,13 @@ export class ProjectsService {
       await this.activityLogger.log(userId, 'Project', id, 'updated', dirty);
     }
     return saved;
+  }
+
+  async uploadPicture(userId: number, id: number, file: Express.Multer.File) {
+    const project = await this.findEntity(userId, id);
+    await this.imagesService.resizeFile(file.path);
+    project.picture = file.filename;
+    return this.projectRepo.save(project);
   }
 
   async remove(userId: number, id: number) {

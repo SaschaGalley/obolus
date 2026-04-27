@@ -9,9 +9,13 @@ import {
   Query,
   ParseIntPipe,
   Res,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
+import { uploadStorage } from '../../common/upload.storage';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -88,6 +92,23 @@ export class ProjectsController {
       'Content-Length': buffer.length,
     });
     res!.end(buffer);
+  }
+
+  @Post(':id/picture')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file', { storage: uploadStorage }))
+  uploadPicture(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.service.uploadPicture(user.id, id, file);
   }
 
   @Post(':id/recalculate')
