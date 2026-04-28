@@ -180,7 +180,7 @@ export class InvoicesService {
         .leftJoinAndSelect('project.client', 'client')
         .where('task.project_id = :projectId', { projectId })
         .andWhere('task.invoice_id IS NULL')
-        .andWhere('task.use = 1')
+        .andWhere('task.is_active = 1')
         .getMany();
 
       const billedTasks = await this.taskRepo
@@ -190,7 +190,7 @@ export class InvoicesService {
         .leftJoinAndSelect('project.client', 'client')
         .where('task.project_id = :projectId', { projectId })
         .andWhere('task.invoice_id IS NOT NULL')
-        .andWhere('task.use = 1')
+        .andWhere('task.is_active = 1')
         .getMany();
 
       const unbilledCost = unbilledTasks.reduce((sum, t) => sum + this.calcTaskCost(t), 0);
@@ -233,7 +233,7 @@ export class InvoicesService {
     });
 
     const totalCost = tasks
-      .filter((t) => t.use)
+      .filter((t) => t.isActive)
       .reduce((sum, task) => {
         const cost = this.calcTaskCost(task);
         return sum + cost;
@@ -245,7 +245,7 @@ export class InvoicesService {
   private calcTaskDuration(task: Task): number {
     if (task.fixedDuration) return Number(task.fixedDuration);
     return (task.sessions || [])
-      .filter((s) => s.use)
+      .filter((s) => s.isActive)
       .reduce((sum, s) => sum + Number(s.duration), 0);
   }
 
@@ -264,7 +264,7 @@ export class InvoicesService {
 
   private getInvoiceWithCalculations(invoice: Invoice) {
     const tasks = invoice.tasks || [];
-    const usableTasks = tasks.filter((t) => t.use);
+    const usableTasks = tasks.filter((t) => t.isActive);
 
     const cost = usableTasks.reduce((sum, task) => sum + this.calcTaskCost(task), 0);
     const duration = usableTasks.reduce((sum, task) => sum + this.calcTaskDuration(task), 0);

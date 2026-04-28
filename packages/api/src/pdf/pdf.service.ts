@@ -76,7 +76,7 @@ export class PdfService implements OnModuleDestroy {
 
     // Group tasks by project
     const projectMap = new Map<number, { project: Project; tasks: Task[] }>();
-    const usableTasks = (invoice.tasks || []).filter((t) => t.use);
+    const usableTasks = (invoice.tasks || []).filter((t) => t.isActive);
 
     for (const task of usableTasks) {
       if (!projectMap.has(task.projectId)) {
@@ -153,7 +153,7 @@ export class PdfService implements OnModuleDestroy {
     if (!project) throw new Error('Project not found');
 
     const tasks = (project.tasks || [])
-      .filter((t) => !t.invoiceId && t.use)
+      .filter((t) => !t.invoiceId && t.isActive)
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
     let totalCost = 0;
@@ -201,7 +201,7 @@ export class PdfService implements OnModuleDestroy {
   private getTaskDuration(task: Task): number {
     if (task.fixedDuration) return Number(task.fixedDuration);
     return (task.sessions || [])
-      .filter((s) => s.use)
+      .filter((s) => s.isActive)
       .reduce((sum, s) => sum + Number(s.duration), 0);
   }
 

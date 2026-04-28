@@ -46,7 +46,7 @@ const FIELD_LABELS: Record<string, string> = {
   fixed_duration: 'Fixe Stunden',
   fixed_date: 'Fixes Datum',
   fixedDate: 'Fixes Datum',
-  use: 'Aktiv',
+  isActive: 'Aktiv',
   order: 'Reihenfolge',
   projectId: 'Projekt',
   duration: 'Dauer',

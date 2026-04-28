@@ -152,7 +152,7 @@ export default function ProjectDetailPage() {
           tasks={tasks}
           project={project}
           mode="project"
-          onToggleUse={(t) => updateTask.mutate({ id: t.id, use: !t.use })}
+          onToggleUse={(t) => updateTask.mutate({ id: t.id, isActive: !t.isActive })}
           onUpdate={(taskId, patch) => updateTask.mutate({ id: taskId, ...patch })}
           onEdit={openTaskForm}
           onDelete={(t) => deleteTask.mutate(t.id)}

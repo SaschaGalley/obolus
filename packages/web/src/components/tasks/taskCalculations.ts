@@ -5,7 +5,7 @@ export function getTaskDuration(task: any): number {
     return Number(task.fixedDuration);
   }
   return (task.sessions || [])
-    .filter((s: any) => s.use)
+    .filter((s: any) => s.isActive)
     .reduce((sum: number, s: any) => sum + Number(s.duration), 0);
 }
 
@@ -30,7 +30,7 @@ export function sumTasks(tasks: any[], project?: any) {
   let duration = 0;
   let cost = 0;
   for (const t of tasks) {
-    if (!t.use) continue;
+    if (!t.isActive) continue;
     duration += getTaskDuration(t);
     cost += getTaskCost(t, project);
   }

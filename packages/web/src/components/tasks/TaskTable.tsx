@@ -90,10 +90,10 @@ export default function TaskTable({
 
   if (mode === 'project' && onToggleUse) {
     columns.push({
-      title: '', width: 36, key: 'use',
+      title: '', width: 36, key: 'isActive',
       render: (_: any, r: any) => (
         <Checkbox
-          checked={r.use}
+          checked={r.isActive}
           onChange={() => onToggleUse(r)}
           onClick={(e) => e.stopPropagation()}
         />

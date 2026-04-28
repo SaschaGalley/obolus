@@ -71,7 +71,7 @@ export class DashboardService {
             INNER JOIN obulus_projects AS projects ON projects.id = tasks.project_id
             WHERE projects.client_id = clients.id
               AND invoice_id IS NULL
-              AND tasks.use = 1
+              AND tasks.is_active = 1
               ${yearFilterTasks}
           ), 0) AS unbilled,
           IFNULL((

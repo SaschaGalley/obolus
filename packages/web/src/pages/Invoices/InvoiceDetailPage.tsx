@@ -25,7 +25,7 @@ export default function InvoiceDetailPage() {
   const projectGroups = useMemo(() => {
     if (!invoice?.tasks) return [];
     const groups: Record<number, { projectName: string; tasks: any[] }> = {};
-    for (const task of invoice.tasks.filter((t: any) => t.use)) {
+    for (const task of invoice.tasks.filter((t: any) => t.isActive)) {
       const pid = task.projectId;
       if (!groups[pid]) groups[pid] = { projectName: task.project?.name || 'Projekt', tasks: [] };
       groups[pid].tasks.push(task);
@@ -35,7 +35,7 @@ export default function InvoiceDetailPage() {
 
   const totals = useMemo(() => {
     if (!invoice?.tasks) return { cost: 0, duration: 0, tax: 0, total: 0 };
-    const usable = invoice.tasks.filter((t: any) => t.use);
+    const usable = invoice.tasks.filter((t: any) => t.isActive);
     const { cost, duration } = sumTasks(usable);
     const tax = invoice.reverseCharge ? 0 : cost * 0.2;
     return { cost, duration, tax, total: cost + tax };
