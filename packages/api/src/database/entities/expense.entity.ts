@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -17,6 +18,7 @@ export enum ExpenseType {
 }
 
 @Entity('obulus_expenses')
+@Index('idx_expenses_user_payed', ['userId', 'payedAt'])
 export class Expense {
   @PrimaryGeneratedColumn()
   id: number;

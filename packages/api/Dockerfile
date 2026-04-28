@@ -36,7 +36,8 @@ COPY --from=builder /app/packages/api/node_modules ./node_modules
 COPY --from=builder /app/packages/api/package.json ./package.json
 COPY --from=builder /app/packages/api/dist ./dist
 COPY --from=builder /app/packages/api/src/pdf/templates ./dist/pdf/templates
+COPY --from=builder /app/packages/api/migrations ./migrations
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "pnpm migration:run:prod && pnpm start:prod"]

@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Project } from './project.entity';
@@ -14,6 +15,8 @@ import { Invoice } from './invoice.entity';
 import { Image } from './image.entity';
 
 @Entity('obulus_clients')
+@Index('idx_clients_user_archived', ['userId', 'archived'])
+@Index('idx_clients_user_name', ['userId', 'name'])
 export class Client {
   @PrimaryGeneratedColumn()
   id: number;

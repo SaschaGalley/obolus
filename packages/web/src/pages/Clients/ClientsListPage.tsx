@@ -24,11 +24,12 @@ const { Title } = Typography;
 
 export default function ClientsListPage() {
   const [show, setShow] = useState('active');
+  const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
-  const clients = useClients(show);
+  const clients = useClients(show, page);
   const createClient = useCreateClient();
 
   const columns = [
@@ -88,7 +89,8 @@ export default function ClientsListPage() {
     return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   }
 
-  const data = clients.data || [];
+  const data = clients.data?.data || [];
+  const total = clients.data?.total || 0;
 
   return (
     <div>
@@ -117,7 +119,14 @@ export default function ClientsListPage() {
             onClick: () => navigate(`/clients/${record.id}`),
             style: { cursor: 'pointer' },
           })}
-          pagination={{ pageSize: 20, showSizeChanger: true }}
+          pagination={{
+            current: page,
+            pageSize: 20,
+            total,
+            showSizeChanger: false,
+            showTotal: (t) => `${t} Kunden`,
+            onChange: (p) => setPage(p),
+          }}
         />
       )}
 

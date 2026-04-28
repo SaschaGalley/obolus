@@ -109,7 +109,6 @@ export default function TaskTable({
         const value = r.fixedDate ? dayjs(r.fixedDate) : null;
         return (
           <DatePicker
-            size="small"
             value={value}
             allowClear
             placeholder={formatDate(getTaskDate(r))}
@@ -131,7 +130,6 @@ export default function TaskTable({
       if (editable && r.fixedDuration != null && r.fixedDuration !== '') {
         return (
           <InputNumber
-            size="small"
             value={Number(r.fixedDuration)}
             min={0}
             step={0.25}
@@ -157,7 +155,6 @@ export default function TaskTable({
       if (editable && r.fixedCost) {
         return (
           <InputNumber
-            size="small"
             value={Number(r.fixedCost)}
             min={0}
             step={1}
@@ -183,7 +180,6 @@ export default function TaskTable({
       if (editable) {
         return (
           <Input
-            size="small"
             defaultValue={r.name}
             onClick={(e) => e.stopPropagation()}
             onBlur={(e) => {

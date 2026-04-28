@@ -6,10 +6,12 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Task } from './task.entity';
 
 @Entity('obulus_sessions')
+@Index('idx_sessions_task', ['taskId'])
 export class Session {
   @PrimaryGeneratedColumn()
   id: number;

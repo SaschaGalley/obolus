@@ -7,12 +7,15 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Client } from './client.entity';
 import { Task } from './task.entity';
 import { Image } from './image.entity';
 
 @Entity('obulus_projects')
+@Index('idx_projects_client_archived', ['clientId', 'archived'])
+@Index('idx_projects_client_name', ['clientId', 'name'])
 export class Project {
   @PrimaryGeneratedColumn()
   id: number;

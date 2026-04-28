@@ -21,10 +21,11 @@ const { Title } = Typography;
 
 export default function ProjectsListPage() {
   const [show, setShow] = useState('active');
+  const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const projects = useProjects({ show });
+  const projects = useProjects({ show, page });
   const createProject = useCreateProject();
   const clients = useClients('active');
 
@@ -54,7 +55,8 @@ export default function ProjectsListPage() {
     return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', padding: 100 }} />;
   }
 
-  const data = projects.data || [];
+  const data = projects.data?.data || [];
+  const total = projects.data?.total || 0;
 
   return (
     <div>
@@ -78,7 +80,14 @@ export default function ProjectsListPage() {
         <ProjectTable
           projects={data}
           columns={['name', 'client', 'total', 'unbilled', 'status']}
-          pagination={{ pageSize: 20, showSizeChanger: true }}
+          pagination={{
+            current: page,
+            pageSize: 20,
+            total,
+            showSizeChanger: false,
+            showTotal: (t) => `${t} Projekte`,
+            onChange: (p) => setPage(p),
+          }}
           size="middle"
         />
       )}

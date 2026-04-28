@@ -14,10 +14,10 @@ import {
 } from '../api/client';
 
 // Clients
-export function useClients(show = 'active') {
+export function useClients(show = 'active', page = 1, limit = 20) {
   return useQuery({
-    queryKey: ['clients', show],
-    queryFn: () => clientsApi.findAll(show).then((r) => r.data),
+    queryKey: ['clients', show, page, limit],
+    queryFn: () => clientsApi.findAll(show, page, limit).then((r) => r.data),
   });
 }
 
@@ -63,7 +63,7 @@ export function useUploadClientPicture() {
 }
 
 // Projects
-export function useProjects(params?: { show?: string; clientId?: number }) {
+export function useProjects(params?: { show?: string; clientId?: number; page?: number; limit?: number }) {
   return useQuery({
     queryKey: ['projects', params],
     queryFn: () => projectsApi.findAll(params).then((r) => r.data),
@@ -205,10 +205,10 @@ export function useDeleteSession() {
 }
 
 // Invoices
-export function useInvoices() {
+export function useInvoices(page = 1, limit = 20) {
   return useQuery({
-    queryKey: ['invoices'],
-    queryFn: () => invoicesApi.findAll().then((r) => r.data),
+    queryKey: ['invoices', page, limit],
+    queryFn: () => invoicesApi.findAll(page, limit).then((r) => r.data),
   });
 }
 
@@ -309,10 +309,10 @@ export function useSearch(query: string) {
 }
 
 // Activities
-export function useClientActivities(clientId: number) {
+export function useClientActivities(clientId: number, page = 1, limit = 50) {
   return useQuery({
-    queryKey: ['activities', 'clients', clientId],
-    queryFn: () => activitiesApi.forClient(clientId).then((r) => r.data),
+    queryKey: ['activities', 'clients', clientId, page, limit],
+    queryFn: () => activitiesApi.forClient(clientId, page, limit).then((r) => r.data),
     enabled: !!clientId,
   });
 }

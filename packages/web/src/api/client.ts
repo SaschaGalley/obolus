@@ -39,8 +39,8 @@ export const authApi = {
 
 // Clients
 export const clientsApi = {
-  findAll: (show = 'active') =>
-    apiClient.get('/clients', { params: { show } }),
+  findAll: (show = 'active', page = 1, limit = 20) =>
+    apiClient.get('/clients', { params: { show, page, limit } }),
   findOne: (id: number) =>
     apiClient.get(`/clients/${id}`),
   create: (data: any) =>
@@ -60,7 +60,7 @@ export const clientsApi = {
 
 // Projects
 export const projectsApi = {
-  findAll: (params?: { show?: string; clientId?: number }) =>
+  findAll: (params?: { show?: string; clientId?: number; page?: number; limit?: number }) =>
     apiClient.get('/projects', { params }),
   findOne: (id: number) =>
     apiClient.get(`/projects/${id}`),
@@ -111,8 +111,8 @@ export const sessionsApi = {
 
 // Invoices
 export const invoicesApi = {
-  findAll: () =>
-    apiClient.get('/invoices'),
+  findAll: (page = 1, limit = 20) =>
+    apiClient.get('/invoices', { params: { page, limit } }),
   findOne: (id: number) =>
     apiClient.get(`/invoices/${id}`),
   create: (data: any) =>
@@ -163,8 +163,8 @@ export const reportsApi = {
 
 // Activities
 export const activitiesApi = {
-  forClient: (clientId: number) =>
-    apiClient.get(`/activities/clients/${clientId}`),
+  forClient: (clientId: number, page = 1, limit = 50) =>
+    apiClient.get(`/activities/clients/${clientId}`, { params: { page, limit } }),
 };
 
 // Images

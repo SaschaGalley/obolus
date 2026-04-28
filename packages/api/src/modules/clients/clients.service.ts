@@ -20,7 +20,7 @@ export class ClientsService {
     private readonly imagesService: ImagesService,
   ) {}
 
-  async findAll(userId: number, show?: string) {
+  async findAll(userId: number, show?: string, page = 1, limit = 20) {
     const qb = this.clientRepo
       .createQueryBuilder('client')
       .leftJoinAndSelect('client.image', 'image')
@@ -33,14 +33,23 @@ export class ClientsService {
       qb.andWhere('client.archived = 1');
     }
 
-    const clients = await qb.getMany();
-    return clients.map(c => ({
-      ...c,
-      total: Number(c.totalCost) || 0,
-      unbilled: Number(c.unbilledCost) || 0,
-      billed: Number(c.billedCost) || 0,
-      hourlyRate: c.getHourlyRate(),
-    }));
+    const [clients, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: clients.map(c => ({
+        ...c,
+        total: Number(c.totalCost) || 0,
+        unbilled: Number(c.unbilledCost) || 0,
+        billed: Number(c.billedCost) || 0,
+        hourlyRate: c.getHourlyRate(),
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(userId: number, id: number) {

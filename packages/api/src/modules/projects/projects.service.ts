@@ -20,7 +20,8 @@ export class ProjectsService {
     private readonly imagesService: ImagesService,
   ) {}
 
-  async findAll(userId: number, filters: { show?: string; clientId?: number } = {}) {
+  async findAll(userId: number, filters: { show?: string; clientId?: number; page?: number; limit?: number } = {}) {
+    const { page = 1, limit = 20 } = filters;
     const qb = this.projectRepo
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.client', 'client')
@@ -39,15 +40,24 @@ export class ProjectsService {
       qb.andWhere('project.client_id = :clientId', { clientId: filters.clientId });
     }
 
-    const projects = await qb.getMany();
-    return projects.map(p => ({
-      ...p,
-      total: Number(p.totalCost) || 0,
-      unbilled: Number(p.unbilledCost) || 0,
-      billed: Number(p.billedCost) || 0,
-      clientName: p.client?.name || '',
-      hourlyRate: p.getHourlyRate(),
-    }));
+    const [projects, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: projects.map(p => ({
+        ...p,
+        total: Number(p.totalCost) || 0,
+        unbilled: Number(p.unbilledCost) || 0,
+        billed: Number(p.billedCost) || 0,
+        clientName: p.client?.name || '',
+        hourlyRate: p.getHourlyRate(),
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(userId: number, id: number) {

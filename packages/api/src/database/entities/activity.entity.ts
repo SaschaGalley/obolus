@@ -6,12 +6,16 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 
 export type LogableType = 'Client' | 'Project' | 'Invoice' | 'Task' | 'Session';
 
 @Entity('obulus_activity')
+@Index('idx_activity_logable', ['logableType', 'logableId'])
+@Index('idx_activity_user', ['userId'])
+@Index('idx_activity_created', ['createdAt'])
 export class Activity {
   @PrimaryGeneratedColumn()
   id: number;

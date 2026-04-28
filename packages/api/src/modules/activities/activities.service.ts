@@ -47,7 +47,7 @@ export class ActivitiesService {
    * Returns the full activity feed for a client: direct activities on the
    * client plus activities on its projects, invoices, tasks and sessions.
    */
-  async findForClient(userId: number, clientId: number) {
+  async findForClient(userId: number, clientId: number, page = 1, limit = 50) {
     const client = await this.clientRepo.findOne({
       where: { id: clientId, userId },
     });
@@ -96,12 +96,19 @@ export class ActivitiesService {
       }
     });
 
-    if (!added) return [];
+    if (!added) return { data: [], total: 0, page, limit };
 
-    const activities = await qb.getMany();
-    return activities.map((a) =>
-      this.format(a, projects, invoices, tasks, sessions),
-    );
+    const [activities, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: activities.map((a) => this.format(a, projects, invoices, tasks, sessions)),
+      total,
+      page,
+      limit,
+    };
   }
 
   private format(

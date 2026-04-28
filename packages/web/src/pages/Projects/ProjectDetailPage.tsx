@@ -30,7 +30,7 @@ export default function ProjectDetailPage() {
   const projectId = Number(id);
   const { data: project, isLoading } = useProject(projectId);
   const { data: tasks = [] } = useTasks({ projectId, open: true });
-  const allInvoices = useInvoices();
+  const allInvoices = useInvoices(1, 200);
 
   const [taskDrawer, setTaskDrawer] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -55,7 +55,7 @@ export default function ProjectDetailPage() {
   if (isLoading) return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', padding: 100 }} />;
   if (!project) return <Empty description="Projekt nicht gefunden" />;
 
-  const projectInvoices = (allInvoices.data || []).filter(
+  const projectInvoices = (allInvoices.data?.data || []).filter(
     (inv: any) => (inv.tasks || []).some((t: any) => t.projectId === projectId),
   );
 

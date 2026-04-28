@@ -20,8 +20,8 @@ export class InvoicesService {
     private readonly activityLogger: ActivityLoggerService,
   ) {}
 
-  async findAll(userId: number) {
-    const invoices = await this.invoiceRepo
+  async findAll(userId: number, page = 1, limit = 20) {
+    const qb = this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.client', 'client')
       .leftJoinAndSelect('invoice.tasks', 'task')
@@ -30,10 +30,19 @@ export class InvoicesService {
       .where('client.user_id = :userId', { userId })
       .orderBy('CASE WHEN invoice.sent_at IS NULL THEN 0 ELSE 1 END', 'ASC')
       .addOrderBy('invoice.sent_at', 'DESC')
-      .addOrderBy('invoice.created_at', 'DESC')
-      .getMany();
+      .addOrderBy('invoice.created_at', 'DESC');
 
-    return invoices.map((inv) => this.getInvoiceWithCalculations(inv));
+    const [invoices, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: invoices.map((inv) => this.getInvoiceWithCalculations(inv)),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(userId: number, id: number) {

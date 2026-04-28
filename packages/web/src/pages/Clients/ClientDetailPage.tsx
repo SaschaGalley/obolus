@@ -30,8 +30,8 @@ export default function ClientDetailPage() {
   const client = useClient(clientId);
   const updateClient = useUpdateClient();
   const uploadPicture = useUploadClientPicture();
-  const projects = useProjects({ clientId, show: 'all' });
-  const invoices = useInvoices();
+  const projects = useProjects({ clientId, show: 'all', limit: 200 });
+  const invoices = useInvoices(1, 200);
   const activities = useClientActivities(clientId);
 
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -39,12 +39,15 @@ export default function ClientDetailPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
 
+  const allActivities = activities.data?.data || [];
+  const activitiesTotal = activities.data?.total || 0;
+
   const clientActivities = useMemo(
-    () => (activities.data || []).filter((a: any) => a.logableType === 'Client'),
-    [activities.data],
+    () => allActivities.filter((a: any) => a.logableType === 'Client'),
+    [allActivities],
   );
 
-  const allProjects = projects.data || [];
+  const allProjects = projects.data?.data || [];
   const activeProjects = useMemo(
     () => allProjects.filter((p: any) => !p.archived),
     [allProjects],
@@ -60,7 +63,7 @@ export default function ClientDetailPage() {
         : allProjects;
 
   const clientInvoices = useMemo(
-    () => (invoices.data || [])
+    () => (invoices.data?.data || [])
       .filter((inv: any) => inv.clientId === clientId)
       .sort((a: any, b: any) => {
         const da = a.sentAt ? new Date(a.sentAt).getTime() : 0;
@@ -112,7 +115,7 @@ export default function ClientDetailPage() {
   );
   const activitiesCardExtra = clientActivities.length > 0 && (
     <Button type="link" size="small" onClick={goToTab('activities')}>
-      Alle ({(activities.data || []).length}) <ArrowRightOutlined />
+      Alle ({activitiesTotal}) <ArrowRightOutlined />
     </Button>
   );
 
@@ -205,7 +208,7 @@ export default function ClientDetailPage() {
 
   const activitiesTab = (
     <ActivityTable
-      activities={activities.data || []}
+      activities={allActivities}
       loading={activities.isLoading}
       clientName={data.name}
       pageSize={50}
@@ -218,7 +221,7 @@ export default function ClientDetailPage() {
     { key: 'invoices', label: `Rechnungen (${clientInvoices.length})`, children: invoicesTab },
     {
       key: 'activities',
-      label: `Aktivitäten${activities.data ? ` (${activities.data.length})` : ''}`,
+      label: `Aktivitäten${activitiesTotal ? ` (${activitiesTotal})` : ''}`,
       children: activitiesTab,
     },
   ];
