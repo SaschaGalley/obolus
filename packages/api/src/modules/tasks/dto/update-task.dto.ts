@@ -7,7 +7,7 @@ export class UpdateTaskDto extends PartialType(CreateTaskDto) {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  use?: boolean;
+  isActive?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

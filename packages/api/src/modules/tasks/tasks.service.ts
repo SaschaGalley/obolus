@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Task, Session, Project, Client } from '../../database/entities';
+import { Project, Task } from '../../database/entities';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { ProjectsService } from '../projects/projects.service';
@@ -15,12 +15,11 @@ export class TasksService {
     private readonly taskRepo: Repository<Task>,
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
-    @InjectRepository(Client)
-    private readonly clientRepo: Repository<Client>,
     private readonly projectsService: ProjectsService,
     private readonly clientsService: ClientsService,
     private readonly activityLogger: ActivityLoggerService,
-  ) {}
+  ) {
+  }
 
   async findAll(userId: number, filters: { projectId?: number; invoiceId?: number; open?: boolean } = {}) {
     const qb = this.taskRepo
