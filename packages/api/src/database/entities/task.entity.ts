@@ -14,7 +14,7 @@ import { Invoice } from './invoice.entity';
 import { Session } from './session.entity';
 
 @Entity('obulus_tasks')
-@Index('idx_tasks_project_use_invoice', ['projectId', 'use', 'invoiceId'])
+@Index('idx_tasks_project_use_invoice', ['projectId', 'isActive', 'invoiceId'])
 @Index('idx_tasks_invoice', ['invoiceId'])
 @Index('idx_tasks_project_order', ['projectId', 'order'])
 export class Task {
@@ -48,8 +48,8 @@ export class Task {
   @Column({ type: 'int', unsigned: true, nullable: true })
   order: number;
 
-  @Column({ name: 'use', type: 'tinyint', default: 1 })
-  use: boolean;
+  @Column({ name: 'is_active', type: 'tinyint', default: 1 })
+  isActive: boolean;
 
   @Column({ type: 'tinyint', default: 0 })
   locked: boolean;

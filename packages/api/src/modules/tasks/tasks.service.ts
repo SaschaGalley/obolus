@@ -93,7 +93,7 @@ export class TasksService {
     const dirty: Record<string, any> = {};
     const fields: (keyof UpdateTaskDto)[] = [
       'name', 'note', 'hourlyRate', 'fixedCost', 'fixedDuration',
-      'fixedDate', 'use', 'order', 'projectId',
+      'fixedDate', 'isActive', 'order', 'projectId',
     ];
     for (const f of fields) {
       if (dto[f] !== undefined && (task as any)[f] !== dto[f]) {
@@ -151,7 +151,7 @@ export class TasksService {
   getTaskDuration(task: Task): number {
     if (task.fixedDuration) return Number(task.fixedDuration);
     return (task.sessions || [])
-      .filter((s) => s.use)
+      .filter((s) => s.isActive)
       .reduce((sum, s) => sum + Number(s.duration), 0);
   }
 

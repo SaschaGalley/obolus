@@ -161,7 +161,7 @@ export class ClientsService {
       .leftJoinAndSelect('project.client', 'client')
       .where('task.project_id IN (:...projectIds)', { projectIds })
       .andWhere('task.invoice_id IS NULL')
-      .andWhere('task.use = 1')
+      .andWhere('task.is_active = 1')
       .getMany();
 
     const billedTasks = await this.taskRepo
@@ -171,7 +171,7 @@ export class ClientsService {
       .leftJoinAndSelect('project.client', 'client')
       .where('task.project_id IN (:...projectIds)', { projectIds })
       .andWhere('task.invoice_id IS NOT NULL')
-      .andWhere('task.use = 1')
+      .andWhere('task.is_active = 1')
       .getMany();
 
     client.unbilledCost = unbilledTasks.reduce((sum, t) => sum + this.calcTaskCost(t), 0);
@@ -187,7 +187,7 @@ export class ClientsService {
   private calcTaskDuration(task: Task): number {
     if (task.fixedDuration) return Number(task.fixedDuration);
     return (task.sessions || [])
-      .filter((s) => s.use)
+      .filter((s) => s.isActive)
       .reduce((sum, s) => sum + Number(s.duration), 0);
   }
 

@@ -12,7 +12,7 @@ CREATE INDEX IF NOT EXISTS idx_projects_client_name     ON obulus_projects (clie
 CREATE INDEX IF NOT EXISTS idx_invoices_client_sent ON obulus_invoices (client_id, sent_at);
 
 -- tasks: the hot path — filter by project + use + invoice
-CREATE INDEX IF NOT EXISTS idx_tasks_project_use_invoice ON obulus_tasks (project_id, use, invoice_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_use_invoice ON obulus_tasks (project_id, `use`, invoice_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_invoice             ON obulus_tasks (invoice_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_project_order       ON obulus_tasks (project_id, `order`);
 

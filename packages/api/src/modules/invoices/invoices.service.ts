@@ -91,7 +91,7 @@ export class InvoicesService {
           .set({ invoiceId: saved.id })
           .where('project_id = :projectId', { projectId: dto.projectId })
           .andWhere('invoice_id IS NULL')
-          .andWhere('use = 1')
+          .andWhere('is_active = 1')
           .execute();
       }
     } else {
@@ -107,7 +107,7 @@ export class InvoicesService {
           .set({ invoiceId: saved.id })
           .where('project_id IN (:...projectIds)', { projectIds })
           .andWhere('invoice_id IS NULL')
-          .andWhere('use = 1')
+          .andWhere('is_active = 1')
           .execute();
       }
     }

@@ -28,8 +28,8 @@ export class Session {
   @Column({ type: 'text', nullable: true })
   note: string;
 
-  @Column({ name: 'use', type: 'tinyint', default: 1 })
-  use: boolean;
+  @Column({ name: 'is_active', type: 'tinyint', default: 1 })
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

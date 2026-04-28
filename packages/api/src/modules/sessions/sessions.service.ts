@@ -59,7 +59,7 @@ export class SessionsService {
       startedAt: dto.startedAt || new Date(),
       duration: dto.duration ?? 0,
       note: dto.note,
-      use: dto.use ?? true,
+      isActive: dto.isActive ?? true,
     });
     const saved = await this.sessionRepo.save(session);
 
@@ -84,7 +84,7 @@ export class SessionsService {
       ...(dto.startedAt !== undefined && { startedAt: dto.startedAt }),
       ...(dto.duration !== undefined && { duration: dto.duration }),
       ...(dto.note !== undefined && { note: dto.note }),
-      ...(dto.use !== undefined && { use: dto.use }),
+      ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       ...(dto.taskId !== undefined && { taskId: dto.taskId }),
     });
     const saved = await this.sessionRepo.save(session);

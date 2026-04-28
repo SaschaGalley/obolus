@@ -24,5 +24,5 @@ export class CreateSessionDto {
   @ApiPropertyOptional({ default: true })
   @IsOptional()
   @IsBoolean()
-  use?: boolean;
+  isActive?: boolean;
 }
