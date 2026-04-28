@@ -46,7 +46,7 @@ export default function ProjectsListPage() {
     { key: 'all', label: 'Alle' },
   ];
 
-  const clientOptions = (clients.data || []).map((c: any) => ({
+  const clientOptions = (clients.data?.data || []).map((c: any) => ({
     value: c.id,
     label: c.name,
   }));

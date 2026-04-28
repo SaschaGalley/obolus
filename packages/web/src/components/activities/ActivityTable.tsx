@@ -68,6 +68,9 @@ export interface ActivityTableProps {
   loading?: boolean;
   clientName?: string;
   pageSize?: number;
+  total?: number;
+  page?: number;
+  onPageChange?: (page: number) => void;
   size?: 'small' | 'middle' | 'large';
   showFooterLink?: React.ReactNode;
   hideTasks?: boolean;
@@ -78,6 +81,9 @@ export default function ActivityTable({
   loading,
   clientName,
   pageSize,
+  total,
+  page,
+  onPageChange,
   size = 'small',
   hideTasks = true,
 }: ActivityTableProps) {
@@ -163,7 +169,11 @@ export default function ActivityTable({
       rowKey="id"
       loading={loading}
       size={size}
-      pagination={pageSize ? { pageSize, hideOnSinglePage: true } : false}
+      pagination={
+        total !== undefined && onPageChange
+          ? { current: page, pageSize: pageSize || 50, total, onChange: onPageChange, showTotal: (t) => `${t} Einträge` }
+          : pageSize ? { pageSize, hideOnSinglePage: true } : false
+      }
       onRow={(record: any) => ({
         onClick: () => onRowClick(record),
         style: {

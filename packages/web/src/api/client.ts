@@ -163,8 +163,10 @@ export const reportsApi = {
 
 // Activities
 export const activitiesApi = {
-  forClient: (clientId: number, page = 1, limit = 50) =>
-    apiClient.get(`/activities/clients/${clientId}`, { params: { page, limit } }),
+  forClient: (clientId: number, page = 1, limit = 50, types?: string[]) =>
+    apiClient.get(`/activities/clients/${clientId}`, {
+      params: { page, limit, ...(types ? { types: types.join(',') } : {}) },
+    }),
 };
 
 // Images

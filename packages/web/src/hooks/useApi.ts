@@ -309,10 +309,10 @@ export function useSearch(query: string) {
 }
 
 // Activities
-export function useClientActivities(clientId: number, page = 1, limit = 50) {
+export function useClientActivities(clientId: number, page = 1, limit = 50, types?: string[]) {
   return useQuery({
-    queryKey: ['activities', 'clients', clientId, page, limit],
-    queryFn: () => activitiesApi.forClient(clientId, page, limit).then((r) => r.data),
+    queryKey: ['activities', 'clients', clientId, page, limit, types],
+    queryFn: () => activitiesApi.forClient(clientId, page, limit, types).then((r) => r.data),
     enabled: !!clientId,
   });
 }

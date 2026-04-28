@@ -32,7 +32,9 @@ export default function ClientDetailPage() {
   const uploadPicture = useUploadClientPicture();
   const projects = useProjects({ clientId, show: 'all', limit: 200 });
   const invoices = useInvoices(1, 200);
-  const activities = useClientActivities(clientId);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const activities = useClientActivities(clientId, activitiesPage, 50);
+  const clientOnlyActivities = useClientActivities(clientId, 1, 5, ['Client']);
 
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [projectFilter, setProjectFilter] = useState<'active' | 'archived' | 'all'>('active');
@@ -41,11 +43,7 @@ export default function ClientDetailPage() {
 
   const allActivities = activities.data?.data || [];
   const activitiesTotal = activities.data?.total || 0;
-
-  const clientActivities = useMemo(
-    () => allActivities.filter((a: any) => a.logableType === 'Client'),
-    [allActivities],
-  );
+  const clientActivities = clientOnlyActivities.data?.data || [];
 
   const allProjects = projects.data?.data || [];
   const activeProjects = useMemo(
@@ -212,6 +210,9 @@ export default function ClientDetailPage() {
       loading={activities.isLoading}
       clientName={data.name}
       pageSize={50}
+      total={activitiesTotal}
+      page={activitiesPage}
+      onPageChange={setActivitiesPage}
     />
   );
 

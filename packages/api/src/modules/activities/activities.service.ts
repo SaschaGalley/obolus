@@ -47,7 +47,13 @@ export class ActivitiesService {
    * Returns the full activity feed for a client: direct activities on the
    * client plus activities on its projects, invoices, tasks and sessions.
    */
-  async findForClient(userId: number, clientId: number, page = 1, limit = 50) {
+  async findForClient(
+    userId: number,
+    clientId: number,
+    page = 1,
+    limit = 50,
+    onlyTypes?: string[],
+  ) {
     const client = await this.clientRepo.findOne({
       where: { id: clientId, userId },
     });
@@ -68,7 +74,7 @@ export class ActivitiesService {
       : [];
     const sessionIds = sessions.map((s) => s.id);
 
-    const filters: { type: string; ids: number[] }[] = [
+    const allFilters: { type: string; ids: number[] }[] = [
       { type: 'Client', ids: [clientId] },
       { type: 'Project', ids: projectIds },
       { type: 'Invoice', ids: invoiceIds },
@@ -76,32 +82,38 @@ export class ActivitiesService {
       { type: 'Session', ids: sessionIds },
     ];
 
-    const qb = this.activityRepo
-      .createQueryBuilder('a')
-      .leftJoinAndSelect('a.user', 'user')
-      .orderBy('a.created_at', 'DESC');
+    const filters = onlyTypes
+      ? allFilters.filter((f) => onlyTypes.includes(f.type))
+      : allFilters;
 
-    let added = false;
+    const conditions: string[] = [];
+    const params: Record<string, any> = {};
     filters.forEach((f, i) => {
       if (!f.ids.length) return;
-      const aliases = TYPE_ALIASES[f.type];
-      const param = `types${i}`;
+      const typeParam = `types${i}`;
       const idsParam = `ids${i}`;
-      const cond = `(a.logable_type IN (:...${param}) AND a.logable_id IN (:...${idsParam}))`;
-      if (!added) {
-        qb.where(cond, { [param]: aliases, [idsParam]: f.ids });
-        added = true;
-      } else {
-        qb.orWhere(cond, { [param]: aliases, [idsParam]: f.ids });
-      }
+      params[typeParam] = TYPE_ALIASES[f.type];
+      params[idsParam] = f.ids;
+      conditions.push(`(a.logable_type IN (:...${typeParam}) AND a.logable_id IN (:...${idsParam}))`);
     });
 
-    if (!added) return { data: [], total: 0, page, limit };
+    if (!conditions.length) return { data: [], total: 0, page, limit };
 
-    const [activities, total] = await qb
+    const whereClause = conditions.join(' OR ');
+
+    const total = await this.activityRepo
+      .createQueryBuilder('a')
+      .where(whereClause, params)
+      .getCount();
+
+    const activities = await this.activityRepo
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.user', 'user')
+      .where(whereClause, params)
+      .orderBy('a.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
-      .getManyAndCount();
+      .getMany();
 
     return {
       data: activities.map((a) => this.format(a, projects, invoices, tasks, sessions)),

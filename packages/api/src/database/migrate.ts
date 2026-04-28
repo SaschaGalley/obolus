@@ -12,18 +12,32 @@ async function run() {
     multipleStatements: true,
   });
 
-  // __dirname is src/database/ (dev) or dist/database/ (prod)
-  // migrations/ lives two levels up at the package root
-  const migrationsDir = path.resolve(__dirname, '../../migrations');
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS obulus_migrations (
+      name VARCHAR(255) NOT NULL PRIMARY KEY,
+      applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
+  const [applied] = await connection.query<mysql.RowDataPacket[]>(
+    'SELECT name FROM obulus_migrations',
+  );
+  const appliedSet = new Set(applied.map((r) => r.name));
+
+  const migrationsDir = path.resolve(__dirname, '../../migrations');
   const files = fs.readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
     .sort();
 
   for (const file of files) {
+    if (appliedSet.has(file)) {
+      console.log(`→ ${file} (skipped)`);
+      continue;
+    }
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
     console.log(`→ ${file}`);
     await connection.query(sql);
+    await connection.query('INSERT INTO obulus_migrations (name) VALUES (?)', [file]);
     console.log(`  ✓ done`);
   }
 

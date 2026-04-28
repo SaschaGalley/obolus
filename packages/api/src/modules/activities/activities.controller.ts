@@ -13,17 +13,20 @@ export class ActivitiesController {
   @Get('clients/:id')
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'types', required: false, type: String })
   forClient(
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('types') types?: string,
   ) {
     return this.service.findForClient(
       user.id,
       id,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 50,
+      types ? types.split(',') : undefined,
     );
   }
 }

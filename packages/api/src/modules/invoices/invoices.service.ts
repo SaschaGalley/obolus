@@ -21,21 +21,27 @@ export class InvoicesService {
   ) {}
 
   async findAll(userId: number, page = 1, limit = 20) {
-    const qb = this.invoiceRepo
+    const base = this.invoiceRepo
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.client', 'client')
+      .where('client.user_id = :userId', { userId });
+
+    const total = await base.getCount();
+
+    const invoices = await this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.client', 'client')
       .leftJoinAndSelect('invoice.tasks', 'task')
       .leftJoinAndSelect('task.sessions', 'session')
       .leftJoinAndSelect('task.project', 'project')
       .where('client.user_id = :userId', { userId })
-      .orderBy('CASE WHEN invoice.sent_at IS NULL THEN 0 ELSE 1 END', 'ASC')
-      .addOrderBy('invoice.sent_at', 'DESC')
-      .addOrderBy('invoice.created_at', 'DESC');
-
-    const [invoices, total] = await qb
+      .addSelect('CASE WHEN invoice.sent_at IS NULL THEN 0 ELSE 1 END', 'sort_unsent')
+      .orderBy('sort_unsent', 'ASC')
+      .addOrderBy('invoice.sentAt', 'DESC')
+      .addOrderBy('invoice.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
-      .getManyAndCount();
+      .getMany();
 
     return {
       data: invoices.map((inv) => this.getInvoiceWithCalculations(inv)),
