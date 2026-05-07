@@ -40,6 +40,11 @@ th {
     font-weight: normal;
 }
 
+.task {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
 .task td {
     text-align: right;
     border-bottom: 0.01em solid #333333;

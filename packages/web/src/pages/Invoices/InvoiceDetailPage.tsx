@@ -6,9 +6,9 @@ import {
 } from 'antd';
 import { EditOutlined, FilePdfOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useInvoice, useUpdateInvoice } from '../../hooks/useApi';
+import { useInvoice, useUpdateInvoice, useUpdateTask } from '../../hooks/useApi';
 import { invoicesApi } from '../../api/client';
-import { formatCurrency, formatDate, getInvoiceStatus } from '../../utils/format';
+import { formatCurrency, formatDate, formatDuration, getInvoiceStatus } from '../../utils/format';
 import TaskTable from '../../components/tasks/TaskTable';
 import { sumTasks } from '../../components/tasks/taskCalculations';
 
@@ -19,6 +19,7 @@ export default function InvoiceDetailPage() {
   const invoiceId = Number(id);
   const { data: invoice, isLoading } = useInvoice(invoiceId);
   const updateInvoice = useUpdateInvoice();
+  const updateTask = useUpdateTask();
   const [editDrawer, setEditDrawer] = useState(false);
   const [form] = Form.useForm();
 
@@ -73,6 +74,12 @@ export default function InvoiceDetailPage() {
     } catch { message.error('Fehler beim Speichern'); }
   };
 
+  const handleTaskUpdate = async (taskId: number, patch: Record<string, any>) => {
+    try {
+      await updateTask.mutateAsync({ id: taskId, ...patch });
+    } catch { message.error('Fehler beim Speichern'); }
+  };
+
   const handlePdf = async () => {
     try {
       const { data } = await invoicesApi.downloadPdf(invoiceId);
@@ -110,6 +117,7 @@ export default function InvoiceDetailPage() {
           <TaskTable
             tasks={group.tasks}
             mode="invoice"
+            onUpdate={handleTaskUpdate}
             showSummary={projectGroups.length > 1}
           />
         </div>
@@ -117,6 +125,9 @@ export default function InvoiceDetailPage() {
 
       <Divider />
       <div style={{ textAlign: 'right', maxWidth: 300, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <Text strong>Stunden gesamt:</Text><Text>{formatDuration(totals.duration)}</Text>
+        </div>
         {!invoice.reverseCharge && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>

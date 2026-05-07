@@ -17,7 +17,7 @@ import {
   formatCurrency, formatDate, formatDuration,
 } from '../../utils/format';
 import {
-  getTaskDuration, getTaskCost, getTaskDate, sumTasks,
+  getTaskDuration, getTaskCost, getTaskDate, sumTasks, getHourlyRate,
 } from './taskCalculations';
 
 export type TaskTableMode = 'project' | 'invoice';
@@ -148,6 +148,36 @@ export default function TaskTable({
     },
   });
 
+  // Rate — invoice mode only
+  if (mode === 'invoice') {
+    columns.push({
+      title: 'Stundensatz', key: 'rate', width: 120, align: 'right' as const,
+      render: (_: any, r: any) => {
+        if (r.fixedCost) return '-';
+        const effectiveRate = getHourlyRate(r, project);
+        if (onUpdate) {
+          return (
+            <InputNumber
+              key={`${r.id}-${effectiveRate}`}
+              defaultValue={effectiveRate}
+              min={0}
+              step={1}
+              style={{ width: 100 }}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={(e) => {
+                const v = parseFloat((e.target as HTMLInputElement).value);
+                if (!isNaN(v) && v !== effectiveRate) {
+                  onUpdate(r.id, { hourlyRate: v });
+                }
+              }}
+            />
+          );
+        }
+        return `€ ${effectiveRate}`;
+      },
+    });
+  }
+
   // Amount — third
   columns.push({
     title: 'Betrag', key: 'cost', width: 130, align: 'right' as const,
@@ -228,10 +258,11 @@ export default function TaskTable({
             <Table.Summary.Cell index={mode === 'project' ? 2 : 1} align="right">
               <strong>{formatDuration(totals.duration)}</strong>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={mode === 'project' ? 3 : 2} align="right">
+            {mode === 'invoice' && <Table.Summary.Cell index={2} />}
+            <Table.Summary.Cell index={mode === 'project' ? 3 : 3} align="right">
               <strong>{formatCurrency(totals.cost)}</strong>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={mode === 'project' ? 4 : 3} />
+            <Table.Summary.Cell index={mode === 'project' ? 4 : 4} />
             {mode === 'project' && <Table.Summary.Cell index={5} />}
           </Table.Summary.Row>
         </Table.Summary>

@@ -138,6 +138,7 @@ export function useUpdateTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks'] });
       qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
     },
   });
 }

@@ -69,7 +69,7 @@ export class PdfService implements OnModuleDestroy {
   async generateInvoicePdf(invoiceId: number): Promise<Buffer> {
     const invoice = await this.invoiceRepo.findOne({
       where: { id: invoiceId },
-      relations: ['tasks', 'tasks.project', 'tasks.sessions', 'client'],
+      relations: ['tasks', 'tasks.project', 'tasks.project.client', 'tasks.sessions', 'client'],
     });
 
     if (!invoice) throw new Error('Invoice not found');
@@ -106,7 +106,7 @@ export class PdfService implements OnModuleDestroy {
           note: task.note,
           date: this.formatDate(this.getTaskDate(task)),
           duration: duration.toFixed(2),
-          cost: cost.toFixed(2),
+          cost: this.formatAmount(cost),
         };
       });
       return { name: pg.project?.name || 'Projekt', tasks };
@@ -130,10 +130,10 @@ export class PdfService implements OnModuleDestroy {
         dueDate: this.formatDate(invoice.getDueDate()),
       },
       projects: projectsData,
-      totalCost: totalCost.toFixed(2),
+      totalCost: this.formatAmount(totalCost),
       totalDuration: totalDuration.toFixed(2),
-      tax: tax.toFixed(2),
-      total: total.toFixed(2),
+      tax: this.formatAmount(tax),
+      total: this.formatAmount(total),
       assets,
     };
 
@@ -167,7 +167,7 @@ export class PdfService implements OnModuleDestroy {
         name: task.name,
         note: task.note,
         duration: duration.toFixed(2),
-        cost: cost.toFixed(2),
+        cost: this.formatAmount(cost),
       };
     });
 
@@ -186,10 +186,10 @@ export class PdfService implements OnModuleDestroy {
         address: (project.client?.address || '').replace(/\n/g, '<br>'),
       },
       tasks: tasksData,
-      totalCost: totalCost.toFixed(2),
+      totalCost: this.formatAmount(totalCost),
       totalDuration: totalDuration.toFixed(2),
-      tax: tax.toFixed(2),
-      total: total.toFixed(2),
+      tax: this.formatAmount(tax),
+      total: this.formatAmount(total),
       date: this.formatDate(new Date().toISOString()),
       assets,
     };
@@ -226,6 +226,13 @@ export class PdfService implements OnModuleDestroy {
     );
     if (sessions.length > 0) return sessions[0].startedAt.toString();
     return task.createdAt?.toISOString() || new Date().toISOString();
+  }
+
+  private formatAmount(amount: number): string {
+    return new Intl.NumberFormat('de-AT', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   }
 
   private formatDate(date: string | null): string {
