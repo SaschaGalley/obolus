@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Col, Empty, Row, Select, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
-import { useAccounting, useDashboard } from '../../hooks/useApi';
+import { useDashboard } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 import EntityAvatar from '../../components/EntityAvatar';
 
@@ -16,15 +16,13 @@ const yearOptions = Array.from({ length: currentYear - 2016 + 1 }, (_, i) => ({
 export default function DashboardPage() {
   const [year, setYear] = useState(currentYear);
   const dashboard = useDashboard(year);
-  const accounting = useAccounting(year);
   const navigate = useNavigate();
 
-  if (dashboard.isLoading || accounting.isLoading) {
+  if (dashboard.isLoading) {
     return <Spin size="large" style={{ display: 'block', margin: '100px auto' }}/>;
   }
 
   const stats = dashboard.data;
-  const acc = accounting.data;
 
   const clientColumns = [
     {
@@ -93,10 +91,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>Dashboard</Title>
-        <Select value={year} onChange={setYear} options={yearOptions} style={{ width: 120 }}/>
-      </div>
+      <Title level={3} style={{ marginBottom: 24, marginTop: 0 }}>Dashboard</Title>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
@@ -178,8 +173,11 @@ export default function DashboardPage() {
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} xl={16}>
-          <Card title="Kunden-Übersicht">
+        <Col xs={24}>
+          <Card
+            title="Kunden-Übersicht"
+            extra={<Select value={year} onChange={setYear} options={yearOptions} style={{ width: 100 }} size="small" />}
+          >
             {clients.length === 0 ? (
               <Empty description="Keine Daten vorhanden"/>
             ) : (
@@ -207,33 +205,6 @@ export default function DashboardPage() {
                 )}
               />
             )}
-          </Card>
-        </Col>
-
-        <Col xs={24} xl={8}>
-          <Card title={`Buchhaltung ${year}`}>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Statistic title="Einnahmen" value={acc?.revenue || 0} formatter={(v) => formatCurrency(v as number)}/>
-              </Col>
-              <Col span={12}>
-                <Statistic title="Basispauschalierung" value={acc?.flatRate || 0} formatter={(v) => formatCurrency(v as number)}/>
-              </Col>
-              <Col span={12}>
-                <Statistic title="SVA" value={acc?.sva || 0} formatter={(v) => formatCurrency(v as number)}/>
-              </Col>
-              <Col span={12}>
-                <Statistic title="ESt" value={acc?.est || 0} formatter={(v) => formatCurrency(v as number)}/>
-              </Col>
-              <Col span={24}>
-                <Statistic
-                  title="Netto"
-                  value={acc?.net || 0}
-                  valueStyle={{ color: (acc?.net || 0) >= 0 ? '#3f8600' : '#cf1322', fontSize: 28 }}
-                  formatter={(v) => formatCurrency(v as number)}
-                />
-              </Col>
-            </Row>
           </Card>
         </Col>
       </Row>

@@ -7,7 +7,7 @@ import {
 } from 'antd';
 import {
   PlusOutlined, FileTextOutlined, DeleteOutlined,
-  InboxOutlined, FilePdfOutlined,
+  InboxOutlined, FilePdfOutlined, SortAscendingOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -16,6 +16,7 @@ import {
   useUpdateSession, useDeleteSession, useCreateInvoice, useClientInvoices,
   useUploadProjectPicture,
 } from '../../hooks/useApi';
+import { getTaskDate } from '../../components/tasks/taskCalculations';
 import EntityAvatar from '../../components/EntityAvatar';
 import { projectsApi } from '../../api/client';
 import { formatDate } from '../../utils/format';
@@ -147,6 +148,16 @@ export default function ProjectDetailPage() {
     } catch { message.error('Fehler beim Archivieren'); }
   };
 
+  const handleSortByDate = () => {
+    if (!tasks.length) return;
+    const sorted = [...tasks].sort((a, b) => {
+      const da = getTaskDate(a) ?? '';
+      const db = getTaskDate(b) ?? '';
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+    reorderTasks.mutate(sorted.map((t, i) => ({ id: t.id, order: i })));
+  };
+
   const goToTab = (key: TabKey) => {
     navigate(key === 'tasks' ? `/projects/${projectId}` : `/projects/${projectId}/${key}`);
   };
@@ -156,17 +167,30 @@ export default function ProjectDetailPage() {
       key: 'tasks',
       label: `Tasks${tasks.length ? ` (${tasks.length})` : ''}`,
       children: (
-        <TaskTable
-          tasks={tasks}
-          project={project}
-          mode="project"
-          onToggleUse={(t) => updateTask.mutate({ id: t.id, isActive: !t.isActive })}
-          onUpdate={(taskId, patch) => updateTask.mutate({ id: taskId, ...patch })}
-          onEdit={openTaskForm}
-          onDelete={(t) => deleteTask.mutate(t.id)}
-          onShowSessions={(t) => setSessionsTaskId(t.id)}
-          onReorder={(items) => reorderTasks.mutate(items)}
-        />
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button
+              size="small"
+              icon={<SortAscendingOutlined />}
+              onClick={handleSortByDate}
+              loading={reorderTasks.isPending}
+              disabled={tasks.length === 0}
+            >
+              Nach Datum sortieren
+            </Button>
+          </div>
+          <TaskTable
+            tasks={tasks}
+            project={project}
+            mode="project"
+            onToggleUse={(t) => updateTask.mutate({ id: t.id, isActive: !t.isActive })}
+            onUpdate={(taskId, patch) => updateTask.mutate({ id: taskId, ...patch })}
+            onEdit={openTaskForm}
+            onDelete={(t) => deleteTask.mutate(t.id)}
+            onShowSessions={(t) => setSessionsTaskId(t.id)}
+            onReorder={(items) => reorderTasks.mutate(items)}
+          />
+        </>
       ),
     },
     {
@@ -255,7 +279,7 @@ export default function ProjectDetailPage() {
       <Drawer title={editingTask ? 'Task bearbeiten' : 'Neuer Task'} open={taskDrawer} onClose={() => setTaskDrawer(false)} width={520}>
         <Form form={taskForm} layout="vertical" onFinish={handleTaskSubmit}>
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input />
+            <Input.TextArea autoSize={{ minRows: 2 }} />
           </Form.Item>
           <Form.Item name="note" label="Notiz"><Input.TextArea rows={3} /></Form.Item>
           <Form.Item name="hourlyRate" label="Stundensatz"><InputNumber addonBefore="€" style={{ width: '100%' }} /></Form.Item>

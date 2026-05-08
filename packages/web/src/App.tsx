@@ -41,8 +41,26 @@ export default function App() {
   return (
     <ConfigProvider locale={deDE} theme={{
       token: {
-        colorPrimary: '#1677ff',
-        borderRadius: 6,
+        colorPrimary: '#0ea5e9',
+        borderRadius: 8,
+        colorBgLayout: '#f8fafc',
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      },
+      components: {
+        Menu: {
+          darkItemBg: '#1e293b',
+          darkSubMenuItemBg: '#162032',
+          darkItemSelectedBg: '#0ea5e9',
+          darkItemHoverBg: 'rgba(255,255,255,0.07)',
+          darkItemColor: 'rgba(255,255,255,0.72)',
+          darkItemSelectedColor: '#ffffff',
+          darkItemDisabledColor: 'rgba(255,255,255,0.28)',
+          iconSize: 16,
+        },
+        Layout: {
+          siderBg: '#1e293b',
+          triggerBg: '#162032',
+        },
       },
     }}>
       <AntApp>

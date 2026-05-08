@@ -102,8 +102,8 @@ export class PdfService implements OnModuleDestroy {
         totalCost += cost;
         totalDuration += duration;
         return {
-          name: task.name,
-          note: task.note,
+          name: this.nl2br(task.name),
+          note: task.note ? this.nl2br(task.note) : null,
           date: this.formatDate(this.getTaskDate(task)),
           duration: duration.toFixed(2),
           cost: this.formatAmount(cost),
@@ -164,8 +164,8 @@ export class PdfService implements OnModuleDestroy {
       totalCost += cost;
       totalDuration += duration;
       return {
-        name: task.name,
-        note: task.note,
+        name: this.nl2br(task.name),
+        note: task.note ? this.nl2br(task.note) : null,
         duration: duration.toFixed(2),
         cost: this.formatAmount(cost),
       };
@@ -226,6 +226,11 @@ export class PdfService implements OnModuleDestroy {
     );
     if (sessions.length > 0) return sessions[0].startedAt.toString();
     return task.createdAt?.toISOString() || new Date().toISOString();
+  }
+
+  private nl2br(text: string | null): string {
+    if (!text) return '';
+    return text.replace(/\r?\n/g, '<br>');
   }
 
   private formatAmount(amount: number): string {

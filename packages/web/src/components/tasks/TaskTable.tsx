@@ -209,18 +209,24 @@ export default function TaskTable({
     render: (_: any, r: any) => {
       if (editable) {
         return (
-          <Input
+          <Input.TextArea
+            key={r.id}
             defaultValue={r.name}
+            autoSize={{ minRows: 1 }}
+            style={{ resize: 'none' }}
             onClick={(e) => e.stopPropagation()}
             onBlur={(e) => {
-              if (e.target.value && e.target.value !== r.name) {
-                onUpdate!(r.id, { name: e.target.value });
+              const val = e.target.value.trim();
+              if (val && val !== r.name) {
+                onUpdate!(r.id, { name: val });
               }
             }}
           />
         );
       }
-      return r.name;
+      return (
+        <span style={{ whiteSpace: 'pre-line' }}>{r.name}</span>
+      );
     },
   });
 

@@ -31,9 +31,9 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #0ea5e9 0%, #1e293b 100%)',
     }}>
-      <Card style={{ width: 400, boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}>
+      <Card style={{ width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', borderRadius: 16, border: 'none' }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
             <Title level={2} style={{ margin: 0, letterSpacing: '0.05em' }}>Obulus</Title>
