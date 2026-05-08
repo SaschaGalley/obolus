@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Typography, Button, Space, Table, Drawer, Form, Input,
@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 import {
   useProject, useUpdateProject, useTasks, useCreateTask, useUpdateTask,
   useDeleteTask, useReorderTasks, useSessions, useCreateSession,
-  useUpdateSession, useDeleteSession, useCreateInvoice, useInvoices,
+  useUpdateSession, useDeleteSession, useCreateInvoice, useClientInvoices,
   useUploadProjectPicture,
 } from '../../hooks/useApi';
 import EntityAvatar from '../../components/EntityAvatar';
@@ -24,13 +24,26 @@ import InvoiceTable from '../../components/invoices/InvoiceTable';
 
 const { Title, Text } = Typography;
 
+const VALID_TABS = ['tasks', 'invoices'] as const;
+type TabKey = typeof VALID_TABS[number];
+
 export default function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, tab } = useParams<{ id: string; tab?: string }>();
   const navigate = useNavigate();
   const projectId = Number(id);
+  const activeTab: TabKey = (VALID_TABS.includes(tab as TabKey) ? tab : 'tasks') as TabKey;
+
   const { data: project, isLoading } = useProject(projectId);
   const { data: tasks = [] } = useTasks({ projectId, open: true });
-  const allInvoices = useInvoices(1, 200);
+
+  const isInvoicesTab = activeTab === 'invoices';
+  const [invoicesPage, setInvoicesPage] = useState(1);
+  const clientInvoices = useClientInvoices(
+    project?.clientId ?? 0,
+    invoicesPage,
+    25,
+    { enabled: isInvoicesTab && !!project?.clientId },
+  );
 
   const [taskDrawer, setTaskDrawer] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -52,12 +65,16 @@ export default function ProjectDetailPage() {
   const reorderTasks = useReorderTasks();
   const createInvoice = useCreateInvoice();
 
+  const projectInvoices = useMemo(
+    () => (clientInvoices.data?.data || []).filter(
+      (inv: any) => (inv.tasks || []).some((t: any) => t.projectId === projectId),
+    ),
+    [clientInvoices.data, projectId],
+  );
+  const projectInvoicesTotal = projectInvoices.length;
+
   if (isLoading) return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', padding: 100 }} />;
   if (!project) return <Empty description="Projekt nicht gefunden" />;
-
-  const projectInvoices = (allInvoices.data?.data || []).filter(
-    (inv: any) => (inv.tasks || []).some((t: any) => t.projectId === projectId),
-  );
 
   const openTaskForm = (task?: any) => {
     setEditingTask(task || null);
@@ -143,6 +160,10 @@ export default function ProjectDetailPage() {
     } catch { message.error('Fehler beim Archivieren'); }
   };
 
+  const goToTab = (key: TabKey) => {
+    navigate(key === 'tasks' ? `/projects/${projectId}` : `/projects/${projectId}/${key}`);
+  };
+
   const tabItems = [
     {
       key: 'tasks',
@@ -163,14 +184,17 @@ export default function ProjectDetailPage() {
     },
     {
       key: 'invoices',
-      label: `Rechnungen${projectInvoices.length ? ` (${projectInvoices.length})` : ''}`,
-      children: projectInvoices.length === 0 ? (
+      label: `Rechnungen${projectInvoicesTotal ? ` (${projectInvoicesTotal})` : ''}`,
+      children: clientInvoices.isLoading ? (
+        <Spin />
+      ) : projectInvoices.length === 0 ? (
         <Empty description="Noch keine Rechnungen" />
       ) : (
         <InvoiceTable
           invoices={projectInvoices}
           columns={['number', 'sentAt', 'dueDate', 'status', 'amount']}
-          loading={allInvoices.isLoading}
+          loading={clientInvoices.isLoading}
+          pagination={{ pageSize: 25, hideOnSinglePage: true, total: projectInvoicesTotal, onChange: setInvoicesPage }}
         />
       ),
     },
@@ -212,7 +236,7 @@ export default function ProjectDetailPage() {
         </Space>
       </div>
 
-      <Tabs items={tabItems} />
+      <Tabs activeKey={activeTab} onChange={(k) => goToTab(k as TabKey)} items={tabItems} />
 
       {/* Task Form Drawer */}
       <Drawer title={editingTask ? 'Task bearbeiten' : 'Neuer Task'} open={taskDrawer} onClose={() => setTaskDrawer(false)} width={520}>

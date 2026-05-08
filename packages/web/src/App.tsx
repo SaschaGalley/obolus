@@ -62,8 +62,10 @@ export default function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="clients" element={<ClientsListPage />} />
                 <Route path="clients/:id" element={<ClientDetailPage />} />
+                <Route path="clients/:id/:tab" element={<ClientDetailPage />} />
                 <Route path="projects" element={<ProjectsListPage />} />
                 <Route path="projects/:id" element={<ProjectDetailPage />} />
+                <Route path="projects/:id/:tab" element={<ProjectDetailPage />} />
                 <Route path="invoices" element={<InvoicesListPage />} />
                 <Route path="invoices/:id" element={<InvoiceDetailPage />} />
                 <Route path="expenses" element={<ExpensesListPage />} />

@@ -32,15 +32,18 @@ export class InvoicesController {
   @Get()
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'clientId', required: false, type: Number })
   findAll(
     @CurrentUser() user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('clientId') clientId?: string,
   ) {
     return this.service.findAll(
       user.id,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
+      clientId ? parseInt(clientId, 10) : undefined,
     );
   }
 

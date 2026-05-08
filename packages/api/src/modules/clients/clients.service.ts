@@ -55,7 +55,7 @@ export class ClientsService {
   async findOne(userId: number, id: number) {
     const client = await this.clientRepo.findOne({
       where: { id, userId },
-      relations: ['image', 'projects', 'invoices'],
+      relations: ['image'],
     });
     if (!client) throw new NotFoundException('Client not found');
 
@@ -65,7 +65,7 @@ export class ClientsService {
     // Re-fetch after recalculate
     const updated = await this.clientRepo.findOne({
       where: { id, userId },
-      relations: ['image', 'projects', 'invoices'],
+      relations: ['image'],
     });
     if (!updated) throw new NotFoundException('Client not found');
 
@@ -96,7 +96,7 @@ export class ClientsService {
   private async findEntity(userId: number, id: number): Promise<Client> {
     const client = await this.clientRepo.findOne({
       where: { id, userId },
-      relations: ['image', 'projects', 'invoices'],
+      relations: ['image'],
     });
     if (!client) throw new NotFoundException('Client not found');
     return client;

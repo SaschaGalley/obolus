@@ -111,8 +111,8 @@ export const sessionsApi = {
 
 // Invoices
 export const invoicesApi = {
-  findAll: (page = 1, limit = 20) =>
-    apiClient.get('/invoices', { params: { page, limit } }),
+  findAll: (page = 1, limit = 20, clientId?: number) =>
+    apiClient.get('/invoices', { params: { page, limit, ...(clientId ? { clientId } : {}) } }),
   findOne: (id: number) =>
     apiClient.get(`/invoices/${id}`),
   create: (data: any) =>

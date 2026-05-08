@@ -63,7 +63,7 @@ export class ProjectsService {
   async findOne(userId: number, id: number) {
     const project = await this.projectRepo.findOne({
       where: { id },
-      relations: ['client', 'tasks', 'tasks.sessions', 'image'],
+      relations: ['client', 'tasks', 'image'],
     });
     if (!project) throw new NotFoundException('Project not found');
     if (project.client.userId !== userId) throw new ForbiddenException();
@@ -74,7 +74,7 @@ export class ProjectsService {
     // Re-fetch
     const updated = await this.projectRepo.findOne({
       where: { id },
-      relations: ['client', 'tasks', 'tasks.sessions', 'image'],
+      relations: ['client', 'tasks', 'image'],
     });
     if (!updated) throw new NotFoundException('Project not found');
 
@@ -108,7 +108,7 @@ export class ProjectsService {
   private async findEntity(userId: number, id: number): Promise<Project> {
     const project = await this.projectRepo.findOne({
       where: { id },
-      relations: ['client', 'tasks', 'tasks.sessions', 'image'],
+      relations: ['client', 'tasks', 'image'],
     });
     if (!project) throw new NotFoundException('Project not found');
     if (project.client.userId !== userId) throw new ForbiddenException();

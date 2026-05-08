@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Typography, Breadcrumb, Descriptions, Button, Tabs, Card, Row, Col,
@@ -9,7 +9,7 @@ import {
   EditOutlined, InboxOutlined, ArrowRightOutlined,
 } from '@ant-design/icons';
 import {
-  useClient, useUpdateClient, useProjects, useInvoices, useClientActivities,
+  useClient, useUpdateClient, useProjects, useClientInvoices, useClientActivities,
   useUploadClientPicture,
 } from '../../hooks/useApi';
 import EntityAvatar from '../../components/EntityAvatar';
@@ -21,55 +21,54 @@ import ActivityTable from '../../components/activities/ActivityTable';
 const { Title } = Typography;
 
 const PREVIEW_LIMIT = 5;
+const VALID_TABS = ['overview', 'projects', 'invoices', 'activities'] as const;
+type TabKey = typeof VALID_TABS[number];
 
 export default function ClientDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, tab } = useParams<{ id: string; tab?: string }>();
   const clientId = Number(id);
   const navigate = useNavigate();
+
+  const activeTab: TabKey = (VALID_TABS.includes(tab as TabKey) ? tab : 'overview') as TabKey;
 
   const client = useClient(clientId);
   const updateClient = useUpdateClient();
   const uploadPicture = useUploadClientPicture();
-  const projects = useProjects({ clientId, show: 'all', limit: 200 });
-  const invoices = useInvoices(1, 200);
-  const [activitiesPage, setActivitiesPage] = useState(1);
-  const activities = useClientActivities(clientId, activitiesPage, 50);
-  const clientOnlyActivities = useClientActivities(clientId, 1, 5, ['Client']);
 
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  // --- Overview previews (only when overview tab is active) ---
+  const isOverview = activeTab === 'overview';
+  const previewProjects = useProjects(
+    { clientId, show: 'active', limit: PREVIEW_LIMIT },
+    { enabled: isOverview },
+  );
+  const previewInvoices = useClientInvoices(clientId, 1, PREVIEW_LIMIT, { enabled: isOverview });
+  const previewActivities = useClientActivities(clientId, 1, PREVIEW_LIMIT, ['Client'], { enabled: isOverview });
+
+  // --- Projects tab ---
+  const isProjectsTab = activeTab === 'projects';
+  const [projectsPage, setProjectsPage] = useState(1);
   const [projectFilter, setProjectFilter] = useState<'active' | 'archived' | 'all'>('active');
+  const allProjects = useProjects(
+    { clientId, show: 'all', page: projectsPage, limit: 25 },
+    { enabled: isProjectsTab },
+  );
+
+  // --- Invoices tab ---
+  const isInvoicesTab = activeTab === 'invoices';
+  const [invoicesPage, setInvoicesPage] = useState(1);
+  const clientInvoices = useClientInvoices(clientId, invoicesPage, 25, { enabled: isInvoicesTab });
+
+  // --- Activities tab ---
+  const isActivitiesTab = activeTab === 'activities';
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const activities = useClientActivities(clientId, activitiesPage, 50, undefined, { enabled: isActivitiesTab });
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const allActivities = activities.data?.data || [];
-  const activitiesTotal = activities.data?.total || 0;
-  const clientActivities = clientOnlyActivities.data?.data || [];
-
-  const allProjects = projects.data?.data || [];
-  const activeProjects = useMemo(
-    () => allProjects.filter((p: any) => !p.archived),
-    [allProjects],
-  );
-  const archivedProjects = useMemo(
-    () => allProjects.filter((p: any) => p.archived),
-    [allProjects],
-  );
-
-  const filteredProjects =
-    projectFilter === 'active' ? activeProjects
-      : projectFilter === 'archived' ? archivedProjects
-        : allProjects;
-
-  const clientInvoices = useMemo(
-    () => (invoices.data?.data || [])
-      .filter((inv: any) => inv.clientId === clientId)
-      .sort((a: any, b: any) => {
-        const da = a.sentAt ? new Date(a.sentAt).getTime() : 0;
-        const db = b.sentAt ? new Date(b.sentAt).getTime() : 0;
-        return db - da;
-      }),
-    [invoices.data, clientId],
-  );
+  const goToTab = (key: TabKey) => {
+    navigate(key === 'overview' ? `/clients/${clientId}` : `/clients/${clientId}/${key}`);
+  };
 
   const handleEdit = () => {
     if (client.data) form.setFieldsValue(client.data);
@@ -99,21 +98,27 @@ export default function ClientDetailPage() {
   const data = client.data;
   if (!data) return null;
 
-  const goToTab = (tab: string) => () => setActiveTab(tab);
+  // Overview tab content
+  const previewProjectList = previewProjects.data?.data || [];
+  const previewInvoiceList = previewInvoices.data?.data || [];
+  const previewActivityList = previewActivities.data?.data || [];
+  const previewProjectTotal = previewProjects.data?.total ?? 0;
+  const previewInvoiceTotal = previewInvoices.data?.total ?? 0;
+  const previewActivityTotal = previewActivities.data?.total ?? 0;
 
   const projectsCardExtra = (
-    <Button type="link" size="small" onClick={goToTab('projects')}>
-      Alle ({activeProjects.length}) <ArrowRightOutlined />
+    <Button type="link" size="small" onClick={() => goToTab('projects')}>
+      Alle ({previewProjectTotal}) <ArrowRightOutlined />
     </Button>
   );
   const invoicesCardExtra = (
-    <Button type="link" size="small" onClick={goToTab('invoices')}>
-      Alle ({clientInvoices.length}) <ArrowRightOutlined />
+    <Button type="link" size="small" onClick={() => goToTab('invoices')}>
+      Alle ({previewInvoiceTotal}) <ArrowRightOutlined />
     </Button>
   );
-  const activitiesCardExtra = clientActivities.length > 0 && (
-    <Button type="link" size="small" onClick={goToTab('activities')}>
-      Alle ({activitiesTotal}) <ArrowRightOutlined />
+  const activitiesCardExtra = previewActivityTotal > 0 && (
+    <Button type="link" size="small" onClick={() => goToTab('activities')}>
+      Alle ({previewActivityTotal}) <ArrowRightOutlined />
     </Button>
   );
 
@@ -121,11 +126,13 @@ export default function ClientDetailPage() {
     <Row gutter={[16, 16]}>
       <Col xs={24} xl={12}>
         <Card title="Aktive Projekte" extra={projectsCardExtra} size="small">
-          {activeProjects.length === 0 ? (
+          {previewProjects.isLoading ? (
+            <Spin />
+          ) : previewProjectList.length === 0 ? (
             <Empty description="Keine aktiven Projekte" />
           ) : (
             <ProjectTable
-              projects={activeProjects.slice(0, PREVIEW_LIMIT)}
+              projects={previewProjectList}
               columns={['name', 'total', 'unbilled']}
               hideClient
             />
@@ -134,29 +141,27 @@ export default function ClientDetailPage() {
       </Col>
       <Col xs={24} xl={12}>
         <Card title="Letzte Rechnungen" extra={invoicesCardExtra} size="small">
-          {clientInvoices.length === 0 ? (
+          {previewInvoices.isLoading ? (
+            <Spin />
+          ) : previewInvoiceList.length === 0 ? (
             <Empty description="Noch keine Rechnungen" />
           ) : (
             <InvoiceTable
-              invoices={clientInvoices.slice(0, PREVIEW_LIMIT)}
+              invoices={previewInvoiceList}
               columns={['number', 'sentAt', 'status', 'amount']}
             />
           )}
         </Card>
       </Col>
       <Col xs={24}>
-        <Card
-          title="Letzte Aktivitäten"
-          extra={activitiesCardExtra}
-          size="small"
-        >
-          {activities.isLoading ? (
+        <Card title="Letzte Aktivitäten" extra={activitiesCardExtra} size="small">
+          {previewActivities.isLoading ? (
             <Spin />
-          ) : clientActivities.length === 0 ? (
+          ) : previewActivityList.length === 0 ? (
             <Empty description="Keine Aktivitäten" />
           ) : (
             <ActivityTable
-              activities={clientActivities.slice(0, PREVIEW_LIMIT)}
+              activities={previewActivityList}
               clientName={data.name}
             />
           )}
@@ -165,20 +170,30 @@ export default function ClientDetailPage() {
     </Row>
   );
 
+  // Projects tab content
+  const allProjectsList = allProjects.data?.data || [];
+  const allProjectsTotal = allProjects.data?.total ?? 0;
+  const activeProjectsList = allProjectsList.filter((p: any) => !p.archived);
+  const archivedProjectsList = allProjectsList.filter((p: any) => p.archived);
+  const filteredProjects =
+    projectFilter === 'active' ? activeProjectsList
+      : projectFilter === 'archived' ? archivedProjectsList
+        : allProjectsList;
+
   const projectsTab = (
     <>
       <Tabs
         activeKey={projectFilter}
-        onChange={(k) => setProjectFilter(k as any)}
+        onChange={(k) => { setProjectFilter(k as any); setProjectsPage(1); }}
         size="small"
         style={{ marginBottom: 12 }}
         items={[
-          { key: 'active', label: `Aktiv (${activeProjects.length})` },
-          { key: 'archived', label: `Archiviert (${archivedProjects.length})` },
-          { key: 'all', label: `Alle (${allProjects.length})` },
+          { key: 'active', label: `Aktiv (${activeProjectsList.length})` },
+          { key: 'archived', label: `Archiviert (${archivedProjectsList.length})` },
+          { key: 'all', label: `Alle (${allProjectsTotal})` },
         ]}
       />
-      {filteredProjects.length === 0 ? (
+      {filteredProjects.length === 0 && !allProjects.isLoading ? (
         <Empty description="Keine Projekte" />
       ) : (
         <ProjectTable
@@ -187,30 +202,45 @@ export default function ClientDetailPage() {
             ? ['name', 'total', 'unbilled', 'status']
             : ['name', 'total', 'unbilled']}
           hideClient
-          loading={projects.isLoading}
+          loading={allProjects.isLoading}
+          pagination={allProjectsTotal > 25 ? {
+            current: projectsPage,
+            pageSize: 25,
+            total: allProjectsTotal,
+            onChange: setProjectsPage,
+          } : undefined}
         />
       )}
     </>
   );
 
-  const invoicesTab = clientInvoices.length === 0 ? (
-    <Empty description="Noch keine Rechnungen" />
-  ) : (
+  // Invoices tab content
+  const invoicesList = clientInvoices.data?.data || [];
+  const invoicesTotal = clientInvoices.data?.total ?? 0;
+
+  const invoicesTab = (
     <InvoiceTable
-      invoices={clientInvoices}
+      invoices={invoicesList}
       columns={['number', 'sentAt', 'dueDate', 'status', 'amount']}
-      loading={invoices.isLoading}
-      pagination={{ pageSize: 25, hideOnSinglePage: true }}
+      loading={clientInvoices.isLoading}
+      pagination={{
+        current: invoicesPage,
+        pageSize: 25,
+        total: invoicesTotal,
+        onChange: setInvoicesPage,
+        hideOnSinglePage: true,
+      }}
     />
   );
 
+  // Activities tab content
   const activitiesTab = (
     <ActivityTable
-      activities={allActivities}
+      activities={activities.data?.data || []}
       loading={activities.isLoading}
       clientName={data.name}
       pageSize={50}
-      total={activitiesTotal}
+      total={activities.data?.total ?? 0}
       page={activitiesPage}
       onPageChange={setActivitiesPage}
     />
@@ -218,11 +248,19 @@ export default function ClientDetailPage() {
 
   const tabItems = [
     { key: 'overview', label: 'Übersicht', children: overviewTab },
-    { key: 'projects', label: `Projekte (${allProjects.length})`, children: projectsTab },
-    { key: 'invoices', label: `Rechnungen (${clientInvoices.length})`, children: invoicesTab },
+    {
+      key: 'projects',
+      label: `Projekte${previewProjectTotal ? ` (${previewProjectTotal})` : ''}`,
+      children: projectsTab,
+    },
+    {
+      key: 'invoices',
+      label: `Rechnungen${previewInvoiceTotal ? ` (${previewInvoiceTotal})` : ''}`,
+      children: invoicesTab,
+    },
     {
       key: 'activities',
-      label: `Aktivitäten${activitiesTotal ? ` (${activitiesTotal})` : ''}`,
+      label: `Aktivitäten${previewActivityTotal ? ` (${previewActivityTotal})` : ''}`,
       children: activitiesTab,
     },
   ];
@@ -271,7 +309,7 @@ export default function ClientDetailPage() {
         <Descriptions.Item label="Reverse Charge">{data.reverseCharge ? 'Ja' : 'Nein'}</Descriptions.Item>
       </Descriptions>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+      <Tabs activeKey={activeTab} onChange={(k) => goToTab(k as TabKey)} items={tabItems} />
 
       <Drawer
         title="Kunde bearbeiten"
