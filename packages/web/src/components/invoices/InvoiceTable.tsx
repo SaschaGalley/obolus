@@ -35,12 +35,6 @@ export default function InvoiceTable({
   const colDefs: Record<InvoiceColumn, any> = {
     number: {
       title: 'Nummer', dataIndex: 'number', key: 'number',
-      render: (number: string, record: any) => (
-        <Space>
-          <EntityAvatar name={record.clientName || '?'} picture={record.client?.picture} size={28} />
-          {number}
-        </Space>
-      ),
     },
     client: {
       title: 'Kunde', dataIndex: 'clientName', key: 'clientName',

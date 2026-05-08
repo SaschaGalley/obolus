@@ -21,7 +21,7 @@ export class DashboardService {
     const unpaidInvoices = await this.dataSource.query(
       `SELECT i.id, i.number, i.calculated_cost AS calculatedCost,
               i.sent_at AS sentAt, i.due_days AS dueDays, i.payed_at AS payedAt,
-              i.client_id AS clientId, c.name AS clientName
+              i.client_id AS clientId, c.name AS clientName, c.picture AS clientPicture
        FROM obulus_invoices i
        INNER JOIN obulus_clients c ON c.id = i.client_id
        WHERE c.user_id = ? AND i.payed_at IS NULL AND i.sent_at IS NOT NULL
@@ -31,8 +31,8 @@ export class DashboardService {
 
     // Open projects (unbilled tasks with cost > 0)
     const openProjects = await this.dataSource.query(
-      `SELECT p.id, p.name, p.unbilled_cost AS unbilled, p.unbilled_duration AS unbilledDuration,
-              p.client_id AS clientId, c.name AS clientName
+      `SELECT p.id, p.name, p.picture AS projectPicture, p.unbilled_cost AS unbilled, p.unbilled_duration AS unbilledDuration,
+              p.client_id AS clientId, c.name AS clientName, c.picture AS clientPicture
        FROM obulus_projects p
        INNER JOIN obulus_clients c ON c.id = p.client_id
        WHERE c.user_id = ? AND p.archived = 0 AND c.archived = 0 AND p.unbilled_cost > 0
@@ -64,6 +64,7 @@ export class DashboardService {
         SELECT
           clients.id,
           clients.name,
+          clients.picture,
           clients.archived,
           IFNULL((
             SELECT SUM(tasks.calculated_cost)
@@ -117,6 +118,7 @@ export class DashboardService {
     const mappedClients = clients.map((c: any) => ({
       clientId: c.id,
       clientName: c.name,
+      clientPicture: c.picture || null,
       total: Number(c.total) || 0,
       unbilled: Number(c.unbilled) || 0,
       billed: Number(c.billed) || 0,
@@ -156,6 +158,7 @@ export class DashboardService {
         number: i.number,
         clientId: i.clientId,
         clientName: i.clientName,
+        clientPicture: i.clientPicture || null,
         sentAt: i.sentAt,
         dueDate,
         overdue,
@@ -166,8 +169,10 @@ export class DashboardService {
     const mappedOpenProjects = openProjects.map((p: any) => ({
       id: p.id,
       name: p.name,
+      picture: p.projectPicture || null,
       clientId: p.clientId,
       clientName: p.clientName,
+      clientPicture: p.clientPicture || null,
       unbilled: Number(p.unbilled) || 0,
       unbilledDuration: Number(p.unbilledDuration) || 0,
     }));

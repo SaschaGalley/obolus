@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Col, Empty, Row, Select, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import { Card, Col, Empty, Row, Select, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import { useAccounting, useDashboard } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
+import EntityAvatar from '../../components/EntityAvatar';
 
 const { Title } = Typography;
 
@@ -26,12 +27,17 @@ export default function DashboardPage() {
   const acc = accounting.data;
 
   const clientColumns = [
-    { title: 'Kunde', dataIndex: 'clientName', key: 'clientName' },
-    { title: 'Gesamt', dataIndex: 'total', key: 'total', align: 'right' as const, render: (v: number) => formatCurrency(v) },
+    {
+      title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
+      render: (name: string, r: any) => (
+        <Space><EntityAvatar name={name} picture={r.clientPicture} size={24} />{name}</Space>
+      ),
+    },
     { title: 'Nicht verrechnet', dataIndex: 'unbilled', key: 'unbilled', align: 'right' as const, render: (v: number) => formatCurrency(v) },
     { title: 'Verrechnet', dataIndex: 'billed', key: 'billed', align: 'right' as const, render: (v: number) => formatCurrency(v) },
     { title: 'Bezahlt', dataIndex: 'paid', key: 'paid', align: 'right' as const, render: (v: number) => formatCurrency(v) },
     { title: 'Offen', dataIndex: 'outstanding', key: 'outstanding', align: 'right' as const, render: (v: number) => formatCurrency(v) },
+    { title: 'Gesamt', dataIndex: 'total', key: 'total', align: 'right' as const, render: (v: number) => formatCurrency(v) },
   ];
 
   const clients = stats?.clients || [];
@@ -51,7 +57,12 @@ export default function DashboardPage() {
 
   const unpaidColumns = [
     { title: 'Nummer', dataIndex: 'number', key: 'number' },
-    { title: 'Kunde', dataIndex: 'clientName', key: 'clientName' },
+    {
+      title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
+      render: (name: string, r: any) => (
+        <Space><EntityAvatar name={name} picture={r.clientPicture} size={24} />{name}</Space>
+      ),
+    },
     { title: 'Datum', dataIndex: 'sentAt', key: 'sentAt', render: (v: string) => formatDate(v) },
     {
       title: 'Fällig',
@@ -65,8 +76,18 @@ export default function DashboardPage() {
   ];
 
   const openProjectColumns = [
-    { title: 'Projekt', dataIndex: 'name', key: 'name' },
-    { title: 'Kunde', dataIndex: 'clientName', key: 'clientName' },
+    {
+      title: 'Projekt', dataIndex: 'name', key: 'name',
+      render: (name: string, r: any) => (
+        <Space><EntityAvatar name={name} picture={r.picture} fallbackPicture={r.clientPicture} size={24} />{name}</Space>
+      ),
+    },
+    {
+      title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
+      render: (name: string, r: any) => (
+        <Space><EntityAvatar name={name} picture={r.clientPicture} size={24} />{name}</Space>
+      ),
+    },
     { title: 'Nicht verrechnet', dataIndex: 'unbilled', key: 'unbilled', align: 'right' as const, render: (v: number) => formatCurrency(v) },
   ];
 
@@ -176,11 +197,11 @@ export default function DashboardPage() {
                   <Table.Summary fixed>
                     <Table.Summary.Row>
                       <Table.Summary.Cell index={0}><strong>Gesamt</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(totals.total)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={2} align="right"><strong>{formatCurrency(totals.unbilled)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={3} align="right"><strong>{formatCurrency(totals.billed)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={4} align="right"><strong>{formatCurrency(totals.paid)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={5} align="right"><strong>{formatCurrency(totals.outstanding)}</strong></Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(totals.unbilled)}</strong></Table.Summary.Cell>
+                      <Table.Summary.Cell index={2} align="right"><strong>{formatCurrency(totals.billed)}</strong></Table.Summary.Cell>
+                      <Table.Summary.Cell index={3} align="right"><strong>{formatCurrency(totals.paid)}</strong></Table.Summary.Cell>
+                      <Table.Summary.Cell index={4} align="right"><strong>{formatCurrency(totals.outstanding)}</strong></Table.Summary.Cell>
+                      <Table.Summary.Cell index={5} align="right"><strong>{formatCurrency(totals.total)}</strong></Table.Summary.Cell>
                     </Table.Summary.Row>
                   </Table.Summary>
                 )}

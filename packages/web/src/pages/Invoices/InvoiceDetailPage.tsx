@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  Typography, Descriptions, Tag, Button, Space, Drawer, Form,
-  Input, InputNumber, DatePicker, Switch, Spin, Empty, Breadcrumb, message, Divider,
+  Typography, Descriptions, Tag, Button, Input, InputNumber, DatePicker,
+  Switch, Spin, Empty, Breadcrumb, message, Divider,
 } from 'antd';
-import { EditOutlined, FilePdfOutlined } from '@ant-design/icons';
+import { FilePdfOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useInvoice, useUpdateInvoice, useUpdateTask } from '../../hooks/useApi';
 import { invoicesApi } from '../../api/client';
@@ -20,8 +20,6 @@ export default function InvoiceDetailPage() {
   const { data: invoice, isLoading } = useInvoice(invoiceId);
   const updateInvoice = useUpdateInvoice();
   const updateTask = useUpdateTask();
-  const [editDrawer, setEditDrawer] = useState(false);
-  const [form] = Form.useForm();
 
   const projectGroups = useMemo(() => {
     if (!invoice?.tasks) return [];
@@ -47,31 +45,8 @@ export default function InvoiceDetailPage() {
 
   const status = getInvoiceStatus(invoice);
 
-  const openEdit = () => {
-    form.setFieldsValue({
-      number: invoice.number,
-      sentAt: invoice.sentAt ? dayjs(invoice.sentAt) : null,
-      dueDays: invoice.dueDays,
-      payedAt: invoice.payedAt ? dayjs(invoice.payedAt) : null,
-      showHours: invoice.showHours,
-      showDate: invoice.showDate,
-      reverseCharge: invoice.reverseCharge,
-      note: invoice.note,
-    });
-    setEditDrawer(true);
-  };
-
-  const handleUpdate = async (values: any) => {
-    try {
-      await updateInvoice.mutateAsync({
-        id: invoiceId,
-        ...values,
-        sentAt: values.sentAt?.format('YYYY-MM-DD') || null,
-        payedAt: values.payedAt?.format('YYYY-MM-DD') || null,
-      });
-      message.success('Rechnung aktualisiert');
-      setEditDrawer(false);
-    } catch { message.error('Fehler beim Speichern'); }
+  const save = (patch: Record<string, any>) => {
+    updateInvoice.mutate({ id: invoiceId, ...patch });
   };
 
   const handleTaskUpdate = async (taskId: number, patch: Record<string, any>) => {
@@ -96,19 +71,78 @@ export default function InvoiceDetailPage() {
           <Title level={3} style={{ margin: 0 }}>Rechnung {invoice.number}</Title>
           <Text type="secondary">{invoice.clientName}</Text>
         </div>
-        <Space>
-          <Button icon={<EditOutlined />} onClick={openEdit}>Bearbeiten</Button>
-          <Button icon={<FilePdfOutlined />} type="primary" onClick={handlePdf}>PDF</Button>
-        </Space>
+        <Button icon={<FilePdfOutlined />} type="primary" onClick={handlePdf}>PDF</Button>
       </div>
 
       <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }}>
-        <Descriptions.Item label="Datum">{formatDate(invoice.sentAt)}</Descriptions.Item>
-        <Descriptions.Item label="Fällig am">{invoice.sentAt ? formatDate(dayjs(invoice.sentAt).add(invoice.dueDays || 14, 'day').format('YYYY-MM-DD')) : '-'}</Descriptions.Item>
-        <Descriptions.Item label="Bezahlt am">{formatDate(invoice.payedAt)}</Descriptions.Item>
-        <Descriptions.Item label="Status"><Tag color={status.color}>{status.label}</Tag></Descriptions.Item>
-        {invoice.reverseCharge && <Descriptions.Item label="Reverse Charge" span={2}>Ja</Descriptions.Item>}
-        {invoice.note && <Descriptions.Item label="Notiz" span={2}>{invoice.note}</Descriptions.Item>}
+        <Descriptions.Item label="Nummer">
+          <Input
+            key={invoice.number}
+            defaultValue={invoice.number}
+            variant="borderless"
+            style={{ padding: 0 }}
+            onBlur={(e) => { if (e.target.value !== invoice.number) save({ number: e.target.value }); }}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="Status">
+          <Tag color={status.color}>{status.label}</Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="Rechnungsdatum">
+          <DatePicker
+            key={invoice.sentAt}
+            defaultValue={invoice.sentAt ? dayjs(invoice.sentAt) : null}
+            format="DD.MM.YYYY"
+            variant="borderless"
+            style={{ padding: 0 }}
+            onChange={(d) => save({ sentAt: d ? d.format('YYYY-MM-DD') : null })}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="Zahlungsziel (Tage)">
+          <InputNumber
+            key={invoice.dueDays}
+            defaultValue={invoice.dueDays ?? 14}
+            min={0}
+            variant="borderless"
+            style={{ width: '100%', padding: 0 }}
+            onBlur={(e) => {
+              const v = parseInt(e.target.value);
+              if (!isNaN(v) && v !== invoice.dueDays) save({ dueDays: v });
+            }}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="Bezahlt am">
+          <DatePicker
+            key={invoice.payedAt ?? 'null'}
+            defaultValue={invoice.payedAt ? dayjs(invoice.payedAt) : null}
+            format="DD.MM.YYYY"
+            variant="borderless"
+            style={{ padding: 0 }}
+            onChange={(d) => save({ payedAt: d ? d.format('YYYY-MM-DD') : null })}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="Fällig am">
+          {invoice.sentAt
+            ? formatDate(dayjs(invoice.sentAt).add(invoice.dueDays || 14, 'day').format('YYYY-MM-DD'))
+            : '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="Stunden anzeigen">
+          <Switch checked={invoice.showHours} onChange={(v) => save({ showHours: v })} />
+        </Descriptions.Item>
+        <Descriptions.Item label="Datum anzeigen">
+          <Switch checked={invoice.showDate} onChange={(v) => save({ showDate: v })} />
+        </Descriptions.Item>
+        <Descriptions.Item label="Reverse Charge">
+          <Switch checked={invoice.reverseCharge} onChange={(v) => save({ reverseCharge: v })} />
+        </Descriptions.Item>
+        <Descriptions.Item label="Notiz" span={invoice.reverseCharge ? 1 : 2}>
+          <Input
+            key={invoice.note}
+            defaultValue={invoice.note || ''}
+            variant="borderless"
+            style={{ padding: 0 }}
+            onBlur={(e) => { if (e.target.value !== (invoice.note || '')) save({ note: e.target.value || null }); }}
+          />
+        </Descriptions.Item>
       </Descriptions>
 
       {projectGroups.map((group, i) => (
@@ -142,21 +176,6 @@ export default function InvoiceDetailPage() {
           <Text strong>Gesamt:</Text><Text strong>{formatCurrency(totals.total)}</Text>
         </div>
       </div>
-
-      {/* Edit Drawer */}
-      <Drawer title="Rechnung bearbeiten" open={editDrawer} onClose={() => setEditDrawer(false)} width={520}>
-        <Form form={form} layout="vertical" onFinish={handleUpdate}>
-          <Form.Item name="number" label="Nummer"><Input /></Form.Item>
-          <Form.Item name="sentAt" label="Rechnungsdatum"><DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" /></Form.Item>
-          <Form.Item name="dueDays" label="Zahlungsziel (Tage)"><InputNumber style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="payedAt" label="Bezahlt am"><DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" /></Form.Item>
-          <Form.Item name="showHours" label="Stunden anzeigen" valuePropName="checked"><Switch /></Form.Item>
-          <Form.Item name="showDate" label="Datum anzeigen" valuePropName="checked"><Switch /></Form.Item>
-          <Form.Item name="reverseCharge" label="Reverse Charge" valuePropName="checked"><Switch /></Form.Item>
-          <Form.Item name="note" label="Notiz"><Input.TextArea rows={3} /></Form.Item>
-          <Button type="primary" htmlType="submit" loading={updateInvoice.isPending}>Speichern</Button>
-        </Form>
-      </Drawer>
     </div>
   );
 }

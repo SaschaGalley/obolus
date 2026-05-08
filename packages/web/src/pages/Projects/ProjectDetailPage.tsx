@@ -3,10 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Typography, Button, Space, Table, Drawer, Form, Input,
   InputNumber, DatePicker, Switch, Modal, Popconfirm, Spin, Breadcrumb,
-  message, Empty, Tabs,
+  message, Empty, Tabs, Descriptions,
 } from 'antd';
 import {
-  PlusOutlined, FileTextOutlined, EditOutlined, DeleteOutlined,
+  PlusOutlined, FileTextOutlined, DeleteOutlined,
   InboxOutlined, FilePdfOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -50,12 +50,10 @@ export default function ProjectDetailPage() {
   const [invoiceDrawer, setInvoiceDrawer] = useState(false);
   const [quoteDrawer, setQuoteDrawer] = useState(false);
   const [sessionsTaskId, setSessionsTaskId] = useState<number | null>(null);
-  const [editDrawer, setEditDrawer] = useState(false);
 
   const [taskForm] = Form.useForm();
   const [invoiceForm] = Form.useForm();
   const [quoteForm] = Form.useForm();
-  const [editForm] = Form.useForm();
 
   const updateProject = useUpdateProject();
   const uploadPicture = useUploadProjectPicture();
@@ -137,19 +135,8 @@ export default function ProjectDetailPage() {
     } catch { message.error('Fehler beim Erstellen des Angebots'); }
   };
 
-  const handleEdit = () => {
-    if (project) {
-      editForm.setFieldsValue({ name: project.name, hourlyRate: project.hourlyRate });
-    }
-    setEditDrawer(true);
-  };
-
-  const handleEditSubmit = async (values: any) => {
-    try {
-      await updateProject.mutateAsync({ id: projectId, ...values });
-      message.success('Projekt aktualisiert');
-      setEditDrawer(false);
-    } catch { message.error('Fehler beim Aktualisieren'); }
+  const saveProject = (patch: Record<string, any>) => {
+    updateProject.mutate({ id: projectId, ...patch });
   };
 
   const handleArchive = async () => {
@@ -229,12 +216,38 @@ export default function ProjectDetailPage() {
           <Button icon={<FileTextOutlined />} type="primary" onClick={() => { invoiceForm.resetFields(); setInvoiceDrawer(true); }}>
             Rechnung erstellen
           </Button>
-          <Button icon={<EditOutlined />} onClick={handleEdit}>Bearbeiten</Button>
           <Popconfirm title="Projekt archivieren?" onConfirm={handleArchive} okText="Ja" cancelText="Nein">
             <Button danger icon={<InboxOutlined />}>Archivieren</Button>
           </Popconfirm>
         </Space>
       </div>
+
+      <Descriptions bordered column={{ xs: 1, sm: 2 }} style={{ marginBottom: 24 }} size="small">
+        <Descriptions.Item label="Name">
+          <Input
+            key={project.name}
+            defaultValue={project.name}
+            variant="borderless"
+            style={{ padding: 0 }}
+            onBlur={(e) => { if (e.target.value !== project.name) saveProject({ name: e.target.value }); }}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="Stundensatz">
+          <InputNumber
+            key={project.hourlyRate}
+            defaultValue={project.hourlyRate ? Number(project.hourlyRate) : undefined}
+            min={0}
+            step={5}
+            addonAfter="€"
+            variant="borderless"
+            style={{ width: '100%' }}
+            onBlur={(e) => {
+              const v = parseFloat(e.target.value);
+              if (!isNaN(v) && v !== Number(project.hourlyRate)) saveProject({ hourlyRate: v });
+            }}
+          />
+        </Descriptions.Item>
+      </Descriptions>
 
       <Tabs activeKey={activeTab} onChange={(k) => goToTab(k as TabKey)} items={tabItems} />
 
@@ -278,34 +291,6 @@ export default function ProjectDetailPage() {
         </Form>
       </Drawer>
 
-      {/* Edit Project Drawer */}
-      <Drawer title="Projekt bearbeiten" open={editDrawer} onClose={() => setEditDrawer(false)} width={520}
-        extra={
-          <Space>
-            <Button onClick={() => setEditDrawer(false)}>Abbrechen</Button>
-            <Button type="primary" loading={updateProject.isPending} onClick={() => editForm.submit()}>Speichern</Button>
-          </Space>
-        }
-      >
-        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit}>
-          <Form.Item label="Bild">
-            <EntityAvatar
-              name={project.name}
-              picture={project.picture}
-              fallbackPicture={project.client?.picture}
-              size={64}
-              onUpload={(file) => uploadPicture.mutate({ id: projectId, file })}
-              uploading={uploadPicture.isPending}
-            />
-          </Form.Item>
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="hourlyRate" label="Stundensatz">
-            <InputNumber min={0} step={5} style={{ width: '100%' }} addonAfter="EUR" />
-          </Form.Item>
-        </Form>
-      </Drawer>
 
       <SessionsModal taskId={sessionsTaskId} onClose={() => setSessionsTaskId(null)} />
     </div>

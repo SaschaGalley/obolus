@@ -63,7 +63,7 @@ export class ProjectsService {
   async findOne(userId: number, id: number) {
     const project = await this.projectRepo.findOne({
       where: { id },
-      relations: ['client', 'tasks', 'image'],
+      relations: ['client', 'image'],
     });
     if (!project) throw new NotFoundException('Project not found');
     if (project.client.userId !== userId) throw new ForbiddenException();
@@ -71,15 +71,21 @@ export class ProjectsService {
     // Recalculate on show
     await this.recalculate(project.id);
 
-    // Re-fetch
+    // Re-fetch project info (no tasks — loaded separately below)
     const updated = await this.projectRepo.findOne({
       where: { id },
-      relations: ['client', 'tasks', 'image'],
+      relations: ['client', 'image'],
     });
     if (!updated) throw new NotFoundException('Project not found');
 
+    // Only load unbilled (open) tasks — avoids fetching potentially thousands of billed tasks
+    const openTasks = await this.taskRepo.find({
+      where: { projectId: id, invoiceId: null as any },
+    });
+
     return {
       ...updated,
+      tasks: openTasks,
       total: Number(updated.totalCost) || 0,
       unbilled: Number(updated.unbilledCost) || 0,
       billed: Number(updated.billedCost) || 0,

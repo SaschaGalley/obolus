@@ -46,13 +46,6 @@ export default function ClientsListPage() {
       ),
     },
     {
-      title: 'Gesamt',
-      dataIndex: 'total',
-      key: 'total',
-      align: 'right' as const,
-      render: (v: number) => formatCurrency(v),
-    },
-    {
       title: 'Nicht verrechnet',
       dataIndex: 'unbilled',
       key: 'unbilled',
@@ -63,6 +56,13 @@ export default function ClientsListPage() {
       title: 'Verrechnet',
       dataIndex: 'billed',
       key: 'billed',
+      align: 'right' as const,
+      render: (v: number) => formatCurrency(v),
+    },
+    {
+      title: 'Gesamt',
+      dataIndex: 'total',
+      key: 'total',
       align: 'right' as const,
       render: (v: number) => formatCurrency(v),
     },
