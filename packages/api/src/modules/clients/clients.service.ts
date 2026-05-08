@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Client, Project, Task, Session } from '../../database/entities';
+import { Client, Task } from '../../database/entities';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ActivityLoggerService } from '../activities/activity-logger.service';
@@ -12,8 +12,6 @@ export class ClientsService {
   constructor(
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
-    @InjectRepository(Project)
-    private readonly projectRepo: Repository<Project>,
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
     private readonly activityLogger: ActivityLoggerService,
@@ -59,22 +57,12 @@ export class ClientsService {
     });
     if (!client) throw new NotFoundException('Client not found');
 
-    // Recalculate cached fields on show (like Laravel does)
-    await this.recalculate(client.id);
-
-    // Re-fetch after recalculate
-    const updated = await this.clientRepo.findOne({
-      where: { id, userId },
-      relations: ['image'],
-    });
-    if (!updated) throw new NotFoundException('Client not found');
-
     return {
-      ...updated,
-      total: Number(updated.totalCost) || 0,
-      unbilled: Number(updated.unbilledCost) || 0,
-      billed: Number(updated.billedCost) || 0,
-      hourlyRate: updated.getHourlyRate(),
+      ...client,
+      total: Number(client.totalCost) || 0,
+      unbilled: Number(client.unbilledCost) || 0,
+      billed: Number(client.billedCost) || 0,
+      hourlyRate: client.getHourlyRate(),
     };
   }
 
@@ -136,71 +124,37 @@ export class ClientsService {
   }
 
   async recalculate(clientId: number) {
-    const client = await this.clientRepo.findOne({
-      where: { id: clientId },
-      relations: ['projects'],
+    // Aggregate entirely in SQL — no task/session objects loaded into Node.js.
+    const [row] = await this.taskRepo.manager.query<any[]>(
+      `SELECT
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NULL  AND t.is_active = 1 THEN t.calculated_cost END), 0) AS unbilledCost,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NOT NULL AND t.is_active = 1 THEN t.calculated_cost END), 0) AS billedCost,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NULL  AND t.is_active = 1
+          THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS unbilledDuration,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NOT NULL AND t.is_active = 1
+          THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS billedDuration
+       FROM obulus_tasks t
+       INNER JOIN obulus_projects p ON p.id = t.project_id
+       LEFT JOIN (
+         SELECT task_id, SUM(duration) AS dur
+         FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id
+       ) s_agg ON s_agg.task_id = t.id
+       WHERE p.client_id = ?`,
+      [clientId],
+    );
+
+    const unbilledCost     = Number(row.unbilledCost)     || 0;
+    const billedCost       = Number(row.billedCost)       || 0;
+    const unbilledDuration = Number(row.unbilledDuration) || 0;
+    const billedDuration   = Number(row.billedDuration)   || 0;
+
+    await this.clientRepo.update(clientId, {
+      unbilledCost,
+      billedCost,
+      unbilledDuration,
+      billedDuration,
+      totalCost:     unbilledCost     + billedCost,
+      totalDuration: unbilledDuration + billedDuration,
     });
-    if (!client) return;
-
-    const projectIds = client.projects.map((p) => p.id);
-    if (projectIds.length === 0) {
-      client.unbilledCost = 0;
-      client.unbilledDuration = 0;
-      client.billedCost = 0;
-      client.billedDuration = 0;
-      client.totalCost = 0;
-      client.totalDuration = 0;
-      await this.clientRepo.save(client);
-      return;
-    }
-
-    const unbilledTasks = await this.taskRepo
-      .createQueryBuilder('task')
-      .leftJoinAndSelect('task.sessions', 'session')
-      .leftJoinAndSelect('task.project', 'project')
-      .leftJoinAndSelect('project.client', 'client')
-      .where('task.project_id IN (:...projectIds)', { projectIds })
-      .andWhere('task.invoice_id IS NULL')
-      .andWhere('task.is_active = 1')
-      .getMany();
-
-    const billedTasks = await this.taskRepo
-      .createQueryBuilder('task')
-      .leftJoinAndSelect('task.sessions', 'session')
-      .leftJoinAndSelect('task.project', 'project')
-      .leftJoinAndSelect('project.client', 'client')
-      .where('task.project_id IN (:...projectIds)', { projectIds })
-      .andWhere('task.invoice_id IS NOT NULL')
-      .andWhere('task.is_active = 1')
-      .getMany();
-
-    client.unbilledCost = unbilledTasks.reduce((sum, t) => sum + this.calcTaskCost(t), 0);
-    client.unbilledDuration = unbilledTasks.reduce((sum, t) => sum + this.calcTaskDuration(t), 0);
-    client.billedCost = billedTasks.reduce((sum, t) => sum + this.calcTaskCost(t), 0);
-    client.billedDuration = billedTasks.reduce((sum, t) => sum + this.calcTaskDuration(t), 0);
-    client.totalCost = client.unbilledCost + client.billedCost;
-    client.totalDuration = client.unbilledDuration + client.billedDuration;
-
-    await this.clientRepo.save(client);
-  }
-
-  private calcTaskDuration(task: Task): number {
-    if (task.fixedDuration) return Number(task.fixedDuration);
-    return (task.sessions || [])
-      .filter((s) => s.isActive)
-      .reduce((sum, s) => sum + Number(s.duration), 0);
-  }
-
-  private calcTaskCost(task: Task): number {
-    if (task.fixedCost) return Number(task.fixedCost);
-    const duration = this.calcTaskDuration(task);
-    const rate = task.hourlyRate
-      ? Number(task.hourlyRate)
-      : task.project?.hourlyRate
-        ? Number(task.project.hourlyRate)
-        : task.project?.client?.hourlyRate
-          ? Number(task.project.client.hourlyRate)
-          : 65;
-    return duration * rate;
   }
 }

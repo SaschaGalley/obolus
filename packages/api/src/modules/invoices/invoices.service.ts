@@ -21,23 +21,22 @@ export class InvoicesService {
   ) {}
 
   async findAll(userId: number, page = 1, limit = 20, clientId?: number) {
-    const baseQb = this.invoiceRepo
+    const qb = this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.client', 'client')
       .where('client.user_id = :userId', { userId });
 
     if (clientId) {
-      baseQb.andWhere('invoice.client_id = :clientId', { clientId });
+      qb.andWhere('invoice.client_id = :clientId', { clientId });
     }
 
-    const total = await baseQb.getCount();
+    const total = await qb.getCount();
 
+    // Do NOT join tasks/sessions here — the list only needs invoice header fields.
+    // calculatedCost is already maintained on every task/session mutation.
     const dataQb = this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.client', 'client')
-      .leftJoinAndSelect('invoice.tasks', 'task')
-      .leftJoinAndSelect('task.sessions', 'session')
-      .leftJoinAndSelect('task.project', 'project')
       .where('client.user_id = :userId', { userId })
       .addSelect('CASE WHEN invoice.sent_at IS NULL THEN 0 ELSE 1 END', 'sort_unsent')
       .orderBy('sort_unsent', 'ASC')
@@ -53,7 +52,10 @@ export class InvoicesService {
     const invoices = await dataQb.getMany();
 
     return {
-      data: invoices.map((inv) => this.getInvoiceWithCalculations(inv)),
+      data: invoices.map((inv) => ({
+        ...inv,
+        dueDate: inv.getDueDate(),
+      })),
       total,
       page,
       limit,
@@ -168,15 +170,15 @@ export class InvoicesService {
   async remove(userId: number, id: number) {
     const invoice = await this.invoiceRepo.findOne({
       where: { id },
-      relations: ['client', 'tasks', 'tasks.project'],
+      relations: ['client', 'tasks'],
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
     if (invoice.client.userId !== userId) throw new ForbiddenException();
 
-    // Get affected project/client IDs before unassigning
     const affectedProjectIds = [...new Set((invoice.tasks || []).map(t => t.projectId))];
+    const clientId = invoice.clientId;
 
-    // Unassign tasks
+    // Unassign tasks then delete
     await this.taskRepo
       .createQueryBuilder()
       .update(Task)
@@ -185,76 +187,28 @@ export class InvoicesService {
       .execute();
 
     await this.invoiceRepo.remove(invoice);
-
-    // Recalculate affected projects and client
-    for (const projectId of affectedProjectIds) {
-      const unbilledTasks = await this.taskRepo
-        .createQueryBuilder('task')
-        .leftJoinAndSelect('task.sessions', 'session')
-        .leftJoinAndSelect('task.project', 'project')
-        .leftJoinAndSelect('project.client', 'client')
-        .where('task.project_id = :projectId', { projectId })
-        .andWhere('task.invoice_id IS NULL')
-        .andWhere('task.is_active = 1')
-        .getMany();
-
-      const billedTasks = await this.taskRepo
-        .createQueryBuilder('task')
-        .leftJoinAndSelect('task.sessions', 'session')
-        .leftJoinAndSelect('task.project', 'project')
-        .leftJoinAndSelect('project.client', 'client')
-        .where('task.project_id = :projectId', { projectId })
-        .andWhere('task.invoice_id IS NOT NULL')
-        .andWhere('task.is_active = 1')
-        .getMany();
-
-      const unbilledCost = unbilledTasks.reduce((sum, t) => sum + this.calcTaskCost(t), 0);
-      const unbilledDuration = unbilledTasks.reduce((sum, t) => sum + this.calcTaskDuration(t), 0);
-      const billedCost = billedTasks.reduce((sum, t) => sum + this.calcTaskCost(t), 0);
-      const billedDuration = billedTasks.reduce((sum, t) => sum + this.calcTaskDuration(t), 0);
-
-      await this.projectRepo.update(projectId, {
-        unbilledCost, unbilledDuration, billedCost, billedDuration,
-        totalCost: unbilledCost + billedCost,
-        totalDuration: unbilledDuration + billedDuration,
-      });
-    }
-
     await this.activityLogger.log(userId, 'Invoice', id, 'deleted');
 
-    // Recalculate client
-    if (invoice.clientId) {
-      const clientProjects = await this.projectRepo.find({ where: { clientId: invoice.clientId } });
-      let clientUnbilledCost = 0, clientUnbilledDuration = 0, clientBilledCost = 0, clientBilledDuration = 0;
-      for (const p of clientProjects) {
-        clientUnbilledCost += Number(p.unbilledCost) || 0;
-        clientUnbilledDuration += Number(p.unbilledDuration) || 0;
-        clientBilledCost += Number(p.billedCost) || 0;
-        clientBilledDuration += Number(p.billedDuration) || 0;
-      }
-      await this.clientRepo.update(invoice.clientId, {
-        unbilledCost: clientUnbilledCost, unbilledDuration: clientUnbilledDuration,
-        billedCost: clientBilledCost, billedDuration: clientBilledDuration,
-        totalCost: clientUnbilledCost + clientBilledCost,
-        totalDuration: clientUnbilledDuration + clientBilledDuration,
-      });
+    // Recalculate affected projects via SQL aggregate (no task/session objects loaded)
+    for (const projectId of affectedProjectIds) {
+      await this.recalculateProject(projectId);
+    }
+
+    // Recalculate client from project aggregates
+    if (clientId) {
+      await this.recalculateClient(clientId);
     }
   }
 
   private async recalculateCost(invoiceId: number) {
-    const tasks = await this.taskRepo.find({
-      where: { invoiceId },
-      relations: ['sessions', 'project', 'project.client'],
-    });
-
-    const totalCost = tasks
-      .filter((t) => t.isActive)
-      .reduce((sum, task) => {
-        const cost = this.calcTaskCost(task);
-        return sum + cost;
-      }, 0);
-
-    await this.invoiceRepo.update(invoiceId, { calculatedCost: totalCost });
+    // Use the per-task calculated_cost which is already kept in sync on every
+    // task/session mutation — no need to load tasks or sessions into Node.js.
+    const [row] = await this.taskRepo.manager.query<any[]>(
+      `SELECT COALESCE(SUM(calculated_cost), 0) AS total
+       FROM obulus_tasks WHERE invoice_id = ? AND is_active = 1`,
+      [invoiceId],
+    );
+    await this.invoiceRepo.update(invoiceId, { calculatedCost: Number(row.total) || 0 });
   }
 
   private calcTaskDuration(task: Task): number {
@@ -307,5 +261,56 @@ export class InvoicesService {
       dueDate,
       status,
     };
+  }
+
+  private async recalculateProject(projectId: number) {
+    const [row] = await this.taskRepo.manager.query<any[]>(
+      `SELECT
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NULL  AND t.is_active = 1 THEN t.calculated_cost END), 0) AS unbilledCost,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NOT NULL AND t.is_active = 1 THEN t.calculated_cost END), 0) AS billedCost,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NULL  AND t.is_active = 1
+          THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS unbilledDuration,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NOT NULL AND t.is_active = 1
+          THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS billedDuration
+       FROM obulus_tasks t
+       LEFT JOIN (SELECT task_id, SUM(duration) AS dur FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id) s_agg
+         ON s_agg.task_id = t.id
+       WHERE t.project_id = ?`,
+      [projectId],
+    );
+    const u = Number(row.unbilledCost) || 0;
+    const b = Number(row.billedCost)   || 0;
+    const ud = Number(row.unbilledDuration) || 0;
+    const bd = Number(row.billedDuration)   || 0;
+    await this.projectRepo.update(projectId, {
+      unbilledCost: u, billedCost: b, unbilledDuration: ud, billedDuration: bd,
+      totalCost: u + b, totalDuration: ud + bd,
+    });
+  }
+
+  private async recalculateClient(clientId: number) {
+    const [row] = await this.taskRepo.manager.query<any[]>(
+      `SELECT
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NULL  AND t.is_active = 1 THEN t.calculated_cost END), 0) AS unbilledCost,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NOT NULL AND t.is_active = 1 THEN t.calculated_cost END), 0) AS billedCost,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NULL  AND t.is_active = 1
+          THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS unbilledDuration,
+        COALESCE(SUM(CASE WHEN t.invoice_id IS NOT NULL AND t.is_active = 1
+          THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS billedDuration
+       FROM obulus_tasks t
+       INNER JOIN obulus_projects p ON p.id = t.project_id
+       LEFT JOIN (SELECT task_id, SUM(duration) AS dur FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id) s_agg
+         ON s_agg.task_id = t.id
+       WHERE p.client_id = ?`,
+      [clientId],
+    );
+    const u = Number(row.unbilledCost) || 0;
+    const b = Number(row.billedCost)   || 0;
+    const ud = Number(row.unbilledDuration) || 0;
+    const bd = Number(row.billedDuration)   || 0;
+    await this.clientRepo.update(clientId, {
+      unbilledCost: u, billedCost: b, unbilledDuration: ud, billedDuration: bd,
+      totalCost: u + b, totalDuration: ud + bd,
+    });
   }
 }
