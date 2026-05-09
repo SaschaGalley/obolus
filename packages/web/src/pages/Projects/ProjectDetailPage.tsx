@@ -189,6 +189,10 @@ export default function ProjectDetailPage() {
             onDelete={(t) => deleteTask.mutate(t.id)}
             onShowSessions={(t) => setSessionsTaskId(t.id)}
             onReorder={(items) => reorderTasks.mutate(items)}
+            onAdd={async (data) => {
+              await createTask.mutateAsync({ ...data, projectId });
+              message.success('Task erstellt');
+            }}
           />
         </>
       ),
@@ -233,7 +237,6 @@ export default function ProjectDetailPage() {
           </div>
         </Space>
         <Space>
-          <Button icon={<PlusOutlined />} onClick={() => openTaskForm()}>Task hinzufügen</Button>
           <Button icon={<FilePdfOutlined />} onClick={() => { quoteForm.resetFields(); setQuoteDrawer(true); }}>
             Angebot
           </Button>
@@ -275,8 +278,8 @@ export default function ProjectDetailPage() {
 
       <Tabs activeKey={activeTab} onChange={(k) => goToTab(k as TabKey)} items={tabItems} />
 
-      {/* Task Form Drawer */}
-      <Drawer title={editingTask ? 'Task bearbeiten' : 'Neuer Task'} open={taskDrawer} onClose={() => setTaskDrawer(false)} width={520}>
+      {/* Task Edit Drawer */}
+      <Drawer title="Task bearbeiten" open={taskDrawer} onClose={() => setTaskDrawer(false)} width={520}>
         <Form form={taskForm} layout="vertical" onFinish={handleTaskSubmit}>
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input.TextArea autoSize={{ minRows: 2 }} />
