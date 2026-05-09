@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DatePicker } from 'antd';
 import type { DatePickerProps } from 'antd';
+import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 
 /**
@@ -18,7 +19,7 @@ export default function SmartDatePicker({ onOpenChange, onChange, ...props }: Da
     e.preventDefault();
     e.stopPropagation();
 
-    const current = props.value ? dayjs(props.value as any) : dayjs();
+    const current = props.value ? dayjs(props.value as Dayjs) : dayjs();
     const delta = e.key === 'ArrowUp' ? 1 : -1;
     const days = e.shiftKey ? 7 : 1;
     const next = current.add(delta * days, 'day');
@@ -31,9 +32,9 @@ export default function SmartDatePicker({ onOpenChange, onChange, ...props }: Da
       <DatePicker
         {...props}
         onChange={onChange}
-        onOpenChange={(open, info) => {
+        onOpenChange={(open) => {
           setIsOpen(open);
-          onOpenChange?.(open, info);
+          onOpenChange?.(open);
         }}
       />
     </div>

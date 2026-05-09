@@ -95,7 +95,7 @@ export default function InvoiceDetailPage() {
             format="DD.MM.YYYY"
             variant="borderless"
             style={{ padding: 0 }}
-            onChange={(d) => save({ sentAt: d ? d.format('YYYY-MM-DD') : null })}
+            onChange={(d) => save({ sentAt: d ? (d as import('dayjs').Dayjs).format('YYYY-MM-DD') : null })}
           />
         </Descriptions.Item>
         <Descriptions.Item label="Zahlungsziel (Tage)">
@@ -118,7 +118,7 @@ export default function InvoiceDetailPage() {
             format="DD.MM.YYYY"
             variant="borderless"
             style={{ padding: 0 }}
-            onChange={(d) => save({ payedAt: d ? d.format('YYYY-MM-DD') : null })}
+            onChange={(d) => save({ payedAt: d ? (d as import('dayjs').Dayjs).format('YYYY-MM-DD') : null })}
           />
         </Descriptions.Item>
         <Descriptions.Item label="Fällig am">

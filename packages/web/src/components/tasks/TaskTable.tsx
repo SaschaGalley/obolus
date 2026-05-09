@@ -179,7 +179,7 @@ export default function TaskTable({
             placeholder={formatDate(getTaskDate(r))}
             format="DD.MM.YYYY"
             style={{ width: 130 }}
-            onChange={(d) => onUpdate!(r.id, { fixedDate: d ? d.format('YYYY-MM-DD') : null })}
+            onChange={(d) => onUpdate!(r.id, { fixedDate: d ? (d as dayjs.Dayjs).format('YYYY-MM-DD') : null })}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           />
         );
@@ -353,7 +353,7 @@ export default function TaskTable({
             value={newDate}
             format="DD.MM.YYYY"
             style={{ width: 130 }}
-            onChange={(d) => setNewDate(d)}
+            onChange={(d) => setNewDate(d as dayjs.Dayjs | null)}
           />
         </Table.Summary.Cell>
         {/* Hours / mode toggle */}
