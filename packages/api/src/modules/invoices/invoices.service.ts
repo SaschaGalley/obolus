@@ -28,7 +28,7 @@ export class InvoicesService {
       .leftJoin('invoice.client', 'client')
       .where('client.user_id = :userId', { userId })
       .orderBy('invoice.createdAt', 'DESC')
-      .select(['invoice.number'])
+      .select(['invoice.id', 'invoice.number'])
       .getOne();
 
     if (!lastInvoice?.number) {

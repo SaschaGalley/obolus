@@ -431,7 +431,6 @@ export default function TaskTable({
             icon={<PlusOutlined />}
             onClick={startAdd}
             block
-            size="small"
           >
             Task hinzufügen
           </Button>

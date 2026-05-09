@@ -37,7 +37,8 @@ export default function ClientDetailPage() {
     { enabled: isOverview },
   );
   const previewInvoices = useClientInvoices(clientId, 1, PREVIEW_LIMIT, { enabled: isOverview });
-  const previewActivities = useClientActivities(clientId, 1, PREVIEW_LIMIT, undefined, { enabled: isOverview });
+  // Overview card: only Client-type activities (meaningful recent edits to the client itself)
+  const previewActivities = useClientActivities(clientId, 1, PREVIEW_LIMIT, ['Client'], { enabled: isOverview });
 
   const isProjectsTab = activeTab === 'projects';
   const [projectsPage, setProjectsPage] = useState(1);
@@ -54,6 +55,8 @@ export default function ClientDetailPage() {
   const isActivitiesTab = activeTab === 'activities';
   const [activitiesPage, setActivitiesPage] = useState(1);
   const activities = useClientActivities(clientId, activitiesPage, 50, undefined, { enabled: isActivitiesTab });
+  // Lightweight count query for the tab label (total across all types), disabled when the full tab is already loaded
+  const activityTotalQuery = useClientActivities(clientId, 1, 1, undefined, { enabled: !isActivitiesTab });
 
   const goToTab = (key: TabKey) => {
     navigate(key === 'overview' ? `/clients/${clientId}` : `/clients/${clientId}/${key}`);
@@ -193,6 +196,7 @@ export default function ClientDetailPage() {
       total={activities.data?.total ?? 0}
       page={activitiesPage}
       onPageChange={setActivitiesPage}
+      hideTasks={false}
     />
   );
 
@@ -200,7 +204,7 @@ export default function ClientDetailPage() {
     { key: 'overview', label: 'Übersicht', children: overviewTab },
     { key: 'projects', label: `Projekte${previewProjectTotal ? ` (${previewProjectTotal})` : ''}`, children: projectsTab },
     { key: 'invoices', label: `Rechnungen${previewInvoiceTotal ? ` (${previewInvoiceTotal})` : ''}`, children: invoicesTab },
-    { key: 'activities', label: `Aktivitäten${previewActivityTotal ? ` (${previewActivityTotal})` : ''}`, children: activitiesTab },
+    { key: 'activities', label: `Aktivitäten${(activities.data?.total ?? activityTotalQuery.data?.total) ? ` (${activities.data?.total ?? activityTotalQuery.data?.total})` : ''}`, children: activitiesTab },
   ];
 
   return (
