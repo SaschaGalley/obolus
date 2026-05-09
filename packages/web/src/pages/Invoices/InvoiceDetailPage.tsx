@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  Typography, Descriptions, Tag, Button, Input, InputNumber, DatePicker,
+  Typography, Descriptions, Tag, Button, Input, InputNumber,
   Switch, Spin, Empty, Breadcrumb, message, Divider,
 } from 'antd';
+import SmartDatePicker from '../../components/SmartDatePicker';
 import { FilePdfOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useInvoice, useUpdateInvoice, useUpdateTask } from '../../hooks/useApi';
@@ -88,7 +89,7 @@ export default function InvoiceDetailPage() {
           <Tag color={status.color}>{status.label}</Tag>
         </Descriptions.Item>
         <Descriptions.Item label="Rechnungsdatum">
-          <DatePicker
+          <SmartDatePicker
             key={invoice.sentAt}
             defaultValue={invoice.sentAt ? dayjs(invoice.sentAt) : null}
             format="DD.MM.YYYY"
@@ -111,7 +112,7 @@ export default function InvoiceDetailPage() {
           />
         </Descriptions.Item>
         <Descriptions.Item label="Bezahlt am">
-          <DatePicker
+          <SmartDatePicker
             key={invoice.payedAt ?? 'null'}
             defaultValue={invoice.payedAt ? dayjs(invoice.payedAt) : null}
             format="DD.MM.YYYY"

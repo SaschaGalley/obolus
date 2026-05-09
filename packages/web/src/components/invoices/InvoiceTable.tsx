@@ -33,9 +33,6 @@ export default function InvoiceTable({
   const enabled = (columns ?? ALL_COLUMNS).filter((c) => !(hideClient && c === 'client'));
 
   const colDefs: Record<InvoiceColumn, any> = {
-    number: {
-      title: 'Nummer', dataIndex: 'number', key: 'number',
-    },
     client: {
       title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
       render: (name: string, record: any) => (
@@ -44,6 +41,9 @@ export default function InvoiceTable({
           {name}
         </Space>
       ),
+    },
+    number: {
+      title: 'Nummer', dataIndex: 'number', key: 'number',
     },
     sentAt: {
       title: 'Datum', dataIndex: 'sentAt', key: 'sentAt', width: 120,

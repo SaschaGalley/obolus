@@ -10,7 +10,6 @@ import {
   useUploadClientPicture,
 } from '../../hooks/useApi';
 import EntityAvatar from '../../components/EntityAvatar';
-import { formatCurrency } from '../../utils/format';
 import ProjectTable from '../../components/projects/ProjectTable';
 import InvoiceTable from '../../components/invoices/InvoiceTable';
 import ActivityTable from '../../components/activities/ActivityTable';
@@ -38,7 +37,7 @@ export default function ClientDetailPage() {
     { enabled: isOverview },
   );
   const previewInvoices = useClientInvoices(clientId, 1, PREVIEW_LIMIT, { enabled: isOverview });
-  const previewActivities = useClientActivities(clientId, 1, PREVIEW_LIMIT, ['Client'], { enabled: isOverview });
+  const previewActivities = useClientActivities(clientId, 1, PREVIEW_LIMIT, undefined, { enabled: isOverview });
 
   const isProjectsTab = activeTab === 'projects';
   const [projectsPage, setProjectsPage] = useState(1);
@@ -118,7 +117,7 @@ export default function ClientDetailPage() {
       <Col xs={24}>
         <Card
           title="Letzte Aktivitäten"
-          extra={previewActivityTotal > 0 && <Button type="link" size="small" onClick={() => goToTab('activities')}>Alle ({previewActivityTotal}) <ArrowRightOutlined /></Button>}
+          extra={previewActivityTotal > 0 && <Button type="link" size="small" onClick={() => goToTab('activities')}>Alle anzeigen <ArrowRightOutlined /></Button>}
           size="small"
         >
           {previewActivities.isLoading ? <Spin /> : previewActivityList.length === 0 ? (

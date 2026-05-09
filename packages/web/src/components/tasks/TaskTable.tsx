@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Checkbox, Button, Space, Popconfirm, Input, InputNumber, DatePicker,
+  Table, Checkbox, Button, Space, Popconfirm, Input, InputNumber,
 } from 'antd';
 import {
   EditOutlined, DeleteOutlined, UnorderedListOutlined, PlusOutlined,
@@ -20,6 +20,7 @@ import {
 import {
   getTaskDuration, getTaskCost, getTaskDate, sumTasks, getHourlyRate,
 } from './taskCalculations';
+import SmartDatePicker from '../SmartDatePicker';
 
 export type TaskTableMode = 'project' | 'invoice';
 
@@ -129,7 +130,6 @@ export default function TaskTable({
         fixedCost: entryMode === 'fixed' ? newCost : null,
         hourlyRate: null,
       });
-      // Reset for next quick entry — stay in add mode
       setNewName('');
       setNewDate(dayjs());
       setNewHours(null);
@@ -151,34 +151,36 @@ export default function TaskTable({
   // ── Columns ────────────────────────────────────────────────────────────────
   const columns: any[] = [];
 
-  if (mode === 'project' && onToggleUse) {
+  const hasCheckbox = mode === 'project' && !!onToggleUse;
+
+  if (hasCheckbox) {
     columns.push({
       title: '', width: 36, key: 'isActive',
       render: (_: any, r: any) => (
         <Checkbox
           checked={r.isActive}
-          onChange={() => onToggleUse(r)}
+          onChange={() => onToggleUse!(r)}
           onClick={(e) => e.stopPropagation()}
         />
       ),
     });
   }
 
-  // Date — first
+  // Date
   columns.push({
     title: 'Datum', key: 'date', width: 140,
     render: (_: any, r: any) => {
       if (editable) {
         const value = r.fixedDate ? dayjs(r.fixedDate) : null;
         return (
-          <DatePicker
+          <SmartDatePicker
             value={value}
             allowClear
             placeholder={formatDate(getTaskDate(r))}
             format="DD.MM.YYYY"
             style={{ width: 130 }}
             onChange={(d) => onUpdate!(r.id, { fixedDate: d ? d.format('YYYY-MM-DD') : null })}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           />
         );
       }
@@ -186,24 +188,22 @@ export default function TaskTable({
     },
   });
 
-  // Hours — second
+  // Hours
   columns.push({
     title: 'Stunden', key: 'hours', width: 110, align: 'right' as const,
     render: (_: any, r: any) => {
       if (editable) {
-        // Fixed-cost mode: hours not applicable
         if (r.fixedCost) {
           return <span style={{ color: '#aaa', userSelect: 'none' }}>—</span>;
         }
         const curVal = r.fixedDuration !== null && r.fixedDuration !== undefined && r.fixedDuration !== ''
-          ? Number(r.fixedDuration)
-          : undefined;
+          ? Number(r.fixedDuration) : undefined;
         return (
           <InputNumber
-            key={`h-${r.id}`}
-            value={curVal}
+            key={`h-${r.id}-${curVal ?? ''}`}
+            defaultValue={curVal}
             min={0}
-            step={0.25}
+            step={1}
             placeholder={formatDuration(getTaskDuration(r))}
             style={{ width: 90 }}
             onClick={(e) => e.stopPropagation()}
@@ -211,10 +211,8 @@ export default function TaskTable({
               const raw = e.target.value.replace(',', '.');
               const v = parseFloat(raw);
               if (isNaN(v) || raw.trim() === '') {
-                if (r.fixedDuration !== null && r.fixedDuration !== undefined && r.fixedDuration !== '') {
-                  onUpdate!(r.id, { fixedDuration: null });
-                }
-              } else if (v !== Number(r.fixedDuration)) {
+                if (curVal !== undefined) onUpdate!(r.id, { fixedDuration: null });
+              } else if (v !== curVal) {
                 onUpdate!(r.id, { fixedDuration: v });
               }
             }}
@@ -235,7 +233,7 @@ export default function TaskTable({
         if (onUpdate) {
           return (
             <InputNumber
-              key={`${r.id}-${effectiveRate}`}
+              key={`rate-${r.id}-${effectiveRate}`}
               defaultValue={effectiveRate}
               min={0}
               step={1}
@@ -255,14 +253,15 @@ export default function TaskTable({
     });
   }
 
-  // Amount — third
+  // Amount
   columns.push({
     title: 'Betrag', key: 'cost', width: 130, align: 'right' as const,
     render: (_: any, r: any) => {
       if (editable && r.fixedCost) {
         return (
           <InputNumber
-            value={Number(r.fixedCost)}
+            key={`cost-${r.id}-${Number(r.fixedCost)}`}
+            defaultValue={Number(r.fixedCost)}
             min={0}
             step={1}
             style={{ width: 110 }}
@@ -280,7 +279,7 @@ export default function TaskTable({
     },
   });
 
-  // Name — after the numeric columns
+  // Name
   columns.push({
     title: 'Name', key: 'name',
     render: (_: any, r: any) => {
@@ -289,21 +288,17 @@ export default function TaskTable({
           <Input.TextArea
             key={r.id}
             defaultValue={r.name}
-            autoSize={{ minRows: 1 }}
+            autoSize={{ minRows: 1, maxRows: 7 }}
             style={{ resize: 'none' }}
             onClick={(e) => e.stopPropagation()}
             onBlur={(e) => {
               const val = e.target.value.trim();
-              if (val && val !== r.name) {
-                onUpdate!(r.id, { name: val });
-              }
+              if (val && val !== r.name) onUpdate!(r.id, { name: val });
             }}
           />
         );
       }
-      return (
-        <span style={{ whiteSpace: 'pre-line' }}>{r.name}</span>
-      );
+      return <span style={{ whiteSpace: 'pre-line' }}>{r.name}</span>;
     },
   });
 
@@ -321,10 +316,8 @@ export default function TaskTable({
               title={r.fixedCost ? 'Auf Stunden umstellen' : 'Auf Fixbetrag setzen'}
               onClick={() => {
                 if (r.fixedCost) {
-                  // Switch to hours mode: clear fixedCost
                   onUpdate(r.id, { fixedCost: null });
                 } else {
-                  // Switch to fixed-cost mode: pre-fill with calculated cost, clear fixedDuration
                   const cost = Math.round(getTaskCost(r, project) * 100) / 100;
                   onUpdate(r.id, { fixedCost: cost, fixedDuration: null });
                 }
@@ -346,29 +339,135 @@ export default function TaskTable({
     });
   }
 
+  // ── Summary (includes add row above Gesamt) ───────────────────────────────
+  const colCount = columns.length;
+
+  const addRowInSummary = onAdd ? (
+    addMode ? (
+      // Inline entry form as a summary row
+      <Table.Summary.Row>
+        {hasCheckbox && <Table.Summary.Cell index={0} />}
+        {/* Date */}
+        <Table.Summary.Cell index={hasCheckbox ? 1 : 0}>
+          <SmartDatePicker
+            value={newDate}
+            format="DD.MM.YYYY"
+            style={{ width: 130 }}
+            onChange={(d) => setNewDate(d)}
+          />
+        </Table.Summary.Cell>
+        {/* Hours / mode toggle */}
+        <Table.Summary.Cell index={hasCheckbox ? 2 : 1} align="right">
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'flex-end' }}>
+            <Button
+              size="small"
+              title={entryMode === 'hours' ? 'Wechseln auf Fixbetrag' : 'Wechseln auf Stunden'}
+              style={{ width: 28, padding: 0, flexShrink: 0, fontWeight: 600 }}
+              onClick={() => setEntryMode(entryMode === 'hours' ? 'fixed' : 'hours')}
+            >
+              {entryMode === 'hours' ? 'h' : '€'}
+            </Button>
+            {entryMode === 'hours' && (
+              <InputNumber
+                value={newHours ?? undefined}
+                min={0}
+                step={1}
+                placeholder="0"
+                style={{ width: 60 }}
+                onChange={(v) => setNewHours(v as number | null)}
+              />
+            )}
+          </div>
+        </Table.Summary.Cell>
+        {/* Cost (fixed mode) */}
+        <Table.Summary.Cell index={hasCheckbox ? 3 : 2} align="right">
+          {entryMode === 'fixed' && (
+            <InputNumber
+              value={newCost ?? undefined}
+              min={0}
+              step={1}
+              placeholder="0"
+              addonAfter="€"
+              style={{ width: 110 }}
+              onChange={(v) => setNewCost(v as number | null)}
+            />
+          )}
+        </Table.Summary.Cell>
+        {/* Name */}
+        <Table.Summary.Cell index={hasCheckbox ? 4 : 3}>
+          <Input.TextArea
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            autoSize={{ minRows: 1, maxRows: 7 }}
+            style={{ resize: 'none' }}
+            placeholder="Task-Name… (Enter zum Speichern)"
+            onKeyDown={handleKeyDown}
+          />
+        </Table.Summary.Cell>
+        {/* Actions */}
+        <Table.Summary.Cell index={hasCheckbox ? 5 : 4}>
+          <Space>
+            <Button
+              type="primary"
+              size="small"
+              icon={<CheckOutlined />}
+              loading={isSaving}
+              disabled={!newName.trim()}
+              onClick={handleSave}
+            >
+              Hinzufügen
+            </Button>
+            <Button size="small" icon={<CloseOutlined />} onClick={cancelAdd} />
+          </Space>
+        </Table.Summary.Cell>
+      </Table.Summary.Row>
+    ) : (
+      // Dashed "+" trigger row
+      <Table.Summary.Row>
+        <Table.Summary.Cell index={0} colSpan={colCount}>
+          <Button
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={startAdd}
+            block
+            size="small"
+          >
+            Task hinzufügen
+          </Button>
+        </Table.Summary.Cell>
+      </Table.Summary.Row>
+    )
+  ) : null;
+
   const summary = showSummary
     ? () => (
         <Table.Summary fixed>
+          {addRowInSummary}
           <Table.Summary.Row>
-            {mode === 'project' && onToggleUse && (
-              <Table.Summary.Cell index={0} />
-            )}
-            <Table.Summary.Cell index={mode === 'project' ? 1 : 0}>
+            {hasCheckbox && <Table.Summary.Cell index={0} />}
+            <Table.Summary.Cell index={hasCheckbox ? 1 : 0}>
               <strong>Gesamt</strong>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={mode === 'project' ? 2 : 1} align="right">
+            <Table.Summary.Cell index={hasCheckbox ? 2 : 1} align="right">
               <strong>{formatDuration(totals.duration)}</strong>
             </Table.Summary.Cell>
             {mode === 'invoice' && <Table.Summary.Cell index={2} />}
-            <Table.Summary.Cell index={mode === 'project' ? 3 : 3} align="right">
+            <Table.Summary.Cell index={hasCheckbox ? 3 : 3} align="right">
               <strong>{formatCurrency(totals.cost)}</strong>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={mode === 'project' ? 4 : 4} />
-            {mode === 'project' && <Table.Summary.Cell index={5} />}
+            <Table.Summary.Cell index={hasCheckbox ? 4 : 4} />
+            {mode === 'project' && <Table.Summary.Cell index={hasCheckbox ? 5 : 5} />}
           </Table.Summary.Row>
         </Table.Summary>
       )
-    : undefined;
+    : onAdd
+      ? () => (
+          <Table.Summary>
+            {addRowInSummary}
+          </Table.Summary>
+        )
+      : undefined;
 
   const useDnd = mode === 'project' && !!onReorder;
 
@@ -384,129 +483,13 @@ export default function TaskTable({
     />
   );
 
-  // ── Inline add row ─────────────────────────────────────────────────────────
-  const hasCheckbox = mode === 'project' && !!onToggleUse;
+  if (!useDnd) return tableEl;
 
-  const addRow = onAdd ? (
-    <div style={{ marginTop: 4 }}>
-      {addMode ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 4,
-            padding: '8px 8px',
-            background: '#f0f9ff',
-            borderRadius: 8,
-            border: '1px dashed #0ea5e9',
-          }}
-        >
-          {/* Checkbox slot */}
-          {hasCheckbox && <div style={{ width: 36, flexShrink: 0 }} />}
-
-          {/* Date */}
-          <div style={{ width: 130, flexShrink: 0 }}>
-            <DatePicker
-              value={newDate}
-              format="DD.MM.YYYY"
-              style={{ width: '100%' }}
-              onChange={(d) => setNewDate(d)}
-            />
-          </div>
-
-          {/* Hours / mode toggle */}
-          <div style={{ width: 106, flexShrink: 0, display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Button
-              size="small"
-              type="default"
-              title={entryMode === 'hours' ? 'Wechseln auf Fixbetrag' : 'Wechseln auf Stunden'}
-              style={{ width: 28, padding: 0, flexShrink: 0, fontWeight: 600 }}
-              onClick={() => setEntryMode(entryMode === 'hours' ? 'fixed' : 'hours')}
-            >
-              {entryMode === 'hours' ? 'h' : '€'}
-            </Button>
-            {entryMode === 'hours' && (
-              <InputNumber
-                value={newHours ?? undefined}
-                min={0}
-                step={0.25}
-                placeholder="0"
-                style={{ flex: 1 }}
-                onChange={(v) => setNewHours(v as number | null)}
-              />
-            )}
-          </div>
-
-          {/* Fixed cost input */}
-          <div style={{ width: 126, flexShrink: 0 }}>
-            {entryMode === 'fixed' ? (
-              <InputNumber
-                value={newCost ?? undefined}
-                min={0}
-                step={1}
-                placeholder="0"
-                addonAfter="€"
-                style={{ width: '100%' }}
-                onChange={(v) => setNewCost(v as number | null)}
-              />
-            ) : null}
-          </div>
-
-          {/* Name */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Input.TextArea
-              autoFocus
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              autoSize={{ minRows: 1 }}
-              style={{ resize: 'none' }}
-              placeholder="Task-Name… (Enter zum Speichern)"
-              onKeyDown={handleKeyDown}
-            />
-          </div>
-
-          {/* Actions */}
-          <div style={{ flexShrink: 0, display: 'flex', gap: 4 }}>
-            <Button
-              type="primary"
-              size="small"
-              icon={<CheckOutlined />}
-              loading={isSaving}
-              disabled={!newName.trim()}
-              onClick={handleSave}
-            >
-              Hinzufügen
-            </Button>
-            <Button size="small" icon={<CloseOutlined />} onClick={cancelAdd} />
-          </div>
-        </div>
-      ) : (
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={startAdd}
-          block
-          style={{ marginTop: 4 }}
-        >
-          Task hinzufügen
-        </Button>
-      )}
-    </div>
-  ) : null;
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-  const content = (
-    <>
-      {useDnd ? (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sortedTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-            {tableEl}
-          </SortableContext>
-        </DndContext>
-      ) : tableEl}
-      {addRow}
-    </>
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={sortedTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        {tableEl}
+      </SortableContext>
+    </DndContext>
   );
-
-  return content;
 }

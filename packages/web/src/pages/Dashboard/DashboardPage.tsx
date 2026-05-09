@@ -54,13 +54,13 @@ export default function DashboardPage() {
   );
 
   const unpaidColumns = [
-    { title: 'Nummer', dataIndex: 'number', key: 'number' },
     {
       title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
       render: (name: string, r: any) => (
         <Space><EntityAvatar name={name} picture={r.clientPicture} size={24} />{name}</Space>
       ),
     },
+    { title: 'Nummer', dataIndex: 'number', key: 'number' },
     { title: 'Datum', dataIndex: 'sentAt', key: 'sentAt', render: (v: string) => formatDate(v) },
     {
       title: 'Fällig',

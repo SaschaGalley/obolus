@@ -96,17 +96,12 @@ export default function ClientsListPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Kunden</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setDrawerOpen(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setDrawerOpen(true); }}>
           Neuer Kunde
         </Button>
       </div>
 
-      <Tabs
-        activeKey={show}
-        onChange={setShow}
-        items={tabItems}
-        style={{ marginBottom: 16 }}
-      />
+      <Tabs activeKey={show} onChange={setShow} items={tabItems} style={{ marginBottom: 16 }} />
 
       {data.length === 0 ? (
         <Empty description="Keine Kunden vorhanden" />
@@ -135,31 +130,39 @@ export default function ClientsListPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         width={480}
-        extra={
-          <Space>
-            <Button onClick={() => setDrawerOpen(false)}>Abbrechen</Button>
-            <Button type="primary" loading={createClient.isPending} onClick={() => form.submit()}>
-              Speichern
-            </Button>
-          </Space>
+        styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
+        footer={
+          <Button type="primary" block size="large" loading={createClient.isPending} onClick={() => form.submit()}>
+            Kunde erstellen
+          </Button>
         }
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name ist erforderlich' }]}>
-            <Input />
+            <Input variant="filled" />
           </Form.Item>
           <Form.Item name="address" label="Adresse">
-            <Input.TextArea rows={3} />
+            <Input.TextArea variant="filled" rows={3} />
           </Form.Item>
           <Form.Item name="vatNumber" label="UID-Nummer">
-            <Input />
+            <Input variant="filled" />
           </Form.Item>
           <Form.Item name="hourlyRate" label="Stundensatz">
-            <InputNumber min={0} step={5} style={{ width: '100%' }} addonAfter="EUR" />
+            <InputNumber variant="filled" min={0} step={5} style={{ width: '100%' }} addonAfter="€/h" />
           </Form.Item>
-          <Form.Item name="reverseCharge" label="Reverse Charge" valuePropName="checked">
-            <Switch />
-          </Form.Item>
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+              Optionen
+            </div>
+            <div style={{ borderRadius: 8, border: '1px solid #f0f0f0', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                <span style={{ fontSize: 14 }}>Reverse Charge</span>
+                <Form.Item name="reverseCharge" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+            </div>
+          </div>
         </Form>
       </Drawer>
     </div>

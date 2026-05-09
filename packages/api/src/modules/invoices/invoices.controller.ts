@@ -33,18 +33,26 @@ export class InvoicesController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'clientId', required: false, type: Number })
+  @ApiQuery({ name: 'projectId', required: false, type: Number })
   findAll(
     @CurrentUser() user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('clientId') clientId?: string,
+    @Query('projectId') projectId?: string,
   ) {
     return this.service.findAll(
       user.id,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
       clientId ? parseInt(clientId, 10) : undefined,
+      projectId ? parseInt(projectId, 10) : undefined,
     );
+  }
+
+  @Get('next-number')
+  getNextNumber(@CurrentUser() user: User) {
+    return this.service.getNextNumber(user.id);
   }
 
   @Get(':id')

@@ -221,11 +221,12 @@ export function useClientInvoices(
   clientId: number,
   page = 1,
   limit = 20,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; projectId?: number },
 ) {
+  const projectId = options?.projectId;
   return useQuery({
-    queryKey: ['invoices', 'client', clientId, page, limit],
-    queryFn: () => invoicesApi.findAll(page, limit, clientId).then((r) => r.data),
+    queryKey: ['invoices', 'client', clientId, page, limit, projectId],
+    queryFn: () => invoicesApi.findAll(page, limit, clientId, projectId).then((r) => r.data),
     enabled: !!clientId && options?.enabled !== false,
   });
 }
@@ -235,6 +236,14 @@ export function useInvoice(id: number) {
     queryKey: ['invoices', id],
     queryFn: () => invoicesApi.findOne(id).then((r) => r.data),
     enabled: !!id,
+  });
+}
+
+export function useNextInvoiceNumber() {
+  return useQuery({
+    queryKey: ['invoices', 'next-number'],
+    queryFn: () => invoicesApi.nextNumber().then((r) => r.data),
+    staleTime: 0,
   });
 }
 

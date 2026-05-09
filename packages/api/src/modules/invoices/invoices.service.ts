@@ -20,7 +20,38 @@ export class InvoicesService {
     private readonly activityLogger: ActivityLoggerService,
   ) {}
 
-  async findAll(userId: number, page = 1, limit = 20, clientId?: number) {
+  async getNextNumber(userId: number): Promise<{ number: string }> {
+    const currentYear = new Date().getFullYear();
+
+    const lastInvoice = await this.invoiceRepo
+      .createQueryBuilder('invoice')
+      .leftJoin('invoice.client', 'client')
+      .where('client.user_id = :userId', { userId })
+      .orderBy('invoice.createdAt', 'DESC')
+      .select(['invoice.number'])
+      .getOne();
+
+    if (!lastInvoice?.number) {
+      return { number: `001/${currentYear}` };
+    }
+
+    const match = lastInvoice.number.match(/^(\d+)\/(\d{4})$/);
+    if (!match) {
+      return { number: `001/${currentYear}` };
+    }
+
+    const lastSeq = parseInt(match[1], 10);
+    const lastYear = parseInt(match[2], 10);
+
+    if (lastYear === currentYear) {
+      const next = String(lastSeq + 1).padStart(match[1].length, '0');
+      return { number: `${next}/${currentYear}` };
+    }
+
+    return { number: `001/${currentYear}` };
+  }
+
+  async findAll(userId: number, page = 1, limit = 20, clientId?: number, projectId?: number) {
     const qb = this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.client', 'client')
@@ -28,6 +59,12 @@ export class InvoicesService {
 
     if (clientId) {
       qb.andWhere('invoice.client_id = :clientId', { clientId });
+    }
+    if (projectId) {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM obulus_tasks t WHERE t.invoice_id = invoice.id AND t.project_id = :projectId)`,
+        { projectId },
+      );
     }
 
     const total = await qb.getCount();
@@ -47,6 +84,12 @@ export class InvoicesService {
 
     if (clientId) {
       dataQb.andWhere('invoice.client_id = :clientId', { clientId });
+    }
+    if (projectId) {
+      dataQb.andWhere(
+        `EXISTS (SELECT 1 FROM obulus_tasks t WHERE t.invoice_id = invoice.id AND t.project_id = :projectId)`,
+        { projectId },
+      );
     }
 
     const invoices = await dataQb.getMany();

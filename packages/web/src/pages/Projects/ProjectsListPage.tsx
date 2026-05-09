@@ -8,7 +8,6 @@ import {
   Select,
   Typography,
   Tabs,
-  Space,
   Spin,
   Empty,
   message,
@@ -62,17 +61,12 @@ export default function ProjectsListPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Projekte</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setDrawerOpen(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setDrawerOpen(true); }}>
           Neues Projekt
         </Button>
       </div>
 
-      <Tabs
-        activeKey={show}
-        onChange={setShow}
-        items={tabItems}
-        style={{ marginBottom: 16 }}
-      />
+      <Tabs activeKey={show} onChange={setShow} items={tabItems} style={{ marginBottom: 16 }} />
 
       {data.length === 0 ? (
         <Empty description="Keine Projekte vorhanden" />
@@ -96,22 +90,21 @@ export default function ProjectsListPage() {
         title="Neues Projekt"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width={520}
-        extra={
-          <Space>
-            <Button onClick={() => setDrawerOpen(false)}>Abbrechen</Button>
-            <Button type="primary" loading={createProject.isPending} onClick={() => form.submit()}>
-              Speichern
-            </Button>
-          </Space>
+        width={480}
+        styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
+        footer={
+          <Button type="primary" block size="large" loading={createProject.isPending} onClick={() => form.submit()}>
+            Projekt erstellen
+          </Button>
         }
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name ist erforderlich' }]}>
-            <Input />
+            <Input variant="filled" />
           </Form.Item>
           <Form.Item name="clientId" label="Kunde" rules={[{ required: true, message: 'Kunde ist erforderlich' }]}>
             <Select
+              variant="filled"
               options={clientOptions}
               placeholder="Kunde auswählen"
               showSearch
@@ -121,7 +114,7 @@ export default function ProjectsListPage() {
             />
           </Form.Item>
           <Form.Item name="hourlyRate" label="Stundensatz">
-            <InputNumber min={0} step={5} style={{ width: '100%' }} addonAfter="EUR" />
+            <InputNumber variant="filled" min={0} step={5} style={{ width: '100%' }} addonAfter="€/h" />
           </Form.Item>
         </Form>
       </Drawer>

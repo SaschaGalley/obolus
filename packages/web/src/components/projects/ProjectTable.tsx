@@ -32,28 +32,28 @@ export default function ProjectTable({
   const enabled = (columns ?? ALL_COLUMNS).filter((c) => !(hideClient && c === 'client'));
 
   const colDefs: Record<ProjectColumn, any> = {
-    name: {
-      title: 'Projekt',
-      dataIndex: 'name',
-      key: 'name',
-      sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || ''),
-      render: (name: string, record: any) => (
-        <Space>
-          <EntityAvatar
-            name={name}
-            picture={record.picture}
-            fallbackPicture={record.client?.picture}
-            size={28}
-          />
-          {name}
-        </Space>
-      ),
-    },
     client: {
       title: 'Kunde',
       dataIndex: 'clientName',
       key: 'clientName',
       sorter: (a: any, b: any) => (a.clientName || '').localeCompare(b.clientName || ''),
+      render: (clientName: string, record: any) => (
+        <Space>
+          <EntityAvatar
+            name={clientName}
+            picture={record.picture}
+            fallbackPicture={record.client?.picture}
+            size={28}
+          />
+          {clientName}
+        </Space>
+      ),
+    },
+    name: {
+      title: 'Projekt',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a: any, b: any) => (a.name || '').localeCompare(b.name || ''),
     },
     total: {
       title: 'Gesamt',

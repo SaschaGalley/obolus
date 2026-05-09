@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Typography, Button, Space, Table, Drawer, Form, Input,
-  InputNumber, DatePicker, Switch, Modal, Popconfirm, Spin, Breadcrumb,
+  InputNumber, Switch, Modal, Popconfirm, Spin, Breadcrumb,
   message, Empty, Tabs, Descriptions,
 } from 'antd';
+import SmartDatePicker from '../../components/SmartDatePicker';
 import {
   PlusOutlined, FileTextOutlined, DeleteOutlined,
   InboxOutlined, FilePdfOutlined, SortAscendingOutlined,
@@ -14,7 +15,7 @@ import {
   useProject, useUpdateProject, useTasks, useCreateTask, useUpdateTask,
   useDeleteTask, useReorderTasks, useSessions, useCreateSession,
   useUpdateSession, useDeleteSession, useCreateInvoice, useClientInvoices,
-  useUploadProjectPicture,
+  useUploadProjectPicture, useNextInvoiceNumber,
 } from '../../hooks/useApi';
 import { getTaskDate } from '../../components/tasks/taskCalculations';
 import EntityAvatar from '../../components/EntityAvatar';
@@ -43,7 +44,7 @@ export default function ProjectDetailPage() {
     project?.clientId ?? 0,
     invoicesPage,
     25,
-    { enabled: isInvoicesTab && !!project?.clientId },
+    { enabled: isInvoicesTab && !!project?.clientId, projectId },
   );
 
   const [taskDrawer, setTaskDrawer] = useState(false);
@@ -56,6 +57,8 @@ export default function ProjectDetailPage() {
   const [invoiceForm] = Form.useForm();
   const [quoteForm] = Form.useForm();
 
+  const { data: nextNumberData } = useNextInvoiceNumber();
+
   const updateProject = useUpdateProject();
   const uploadPicture = useUploadProjectPicture();
   const createTask = useCreateTask();
@@ -64,13 +67,8 @@ export default function ProjectDetailPage() {
   const reorderTasks = useReorderTasks();
   const createInvoice = useCreateInvoice();
 
-  const projectInvoices = useMemo(
-    () => (clientInvoices.data?.data || []).filter(
-      (inv: any) => (inv.tasks || []).some((t: any) => t.projectId === projectId),
-    ),
-    [clientInvoices.data, projectId],
-  );
-  const projectInvoicesTotal = projectInvoices.length;
+  const projectInvoices = clientInvoices.data?.data || [];
+  const projectInvoicesTotal = clientInvoices.data?.total ?? 0;
 
   if (isLoading) return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', padding: 100 }} />;
   if (!project) return <Empty description="Projekt nicht gefunden" />;
@@ -108,6 +106,18 @@ export default function ProjectDetailPage() {
       }
       setTaskDrawer(false);
     } catch { message.error('Fehler beim Speichern'); }
+  };
+
+  const openInvoiceDrawer = () => {
+    invoiceForm.resetFields();
+    invoiceForm.setFieldsValue({
+      number: nextNumberData?.number ?? '',
+      sentAt: dayjs(),
+      dueDays: 14,
+      showHours: true,
+      showDate: true,
+    });
+    setInvoiceDrawer(true);
   };
 
   const handleInvoiceSubmit = async (values: any) => {
@@ -240,7 +250,7 @@ export default function ProjectDetailPage() {
           <Button icon={<FilePdfOutlined />} onClick={() => { quoteForm.resetFields(); setQuoteDrawer(true); }}>
             Angebot
           </Button>
-          <Button icon={<FileTextOutlined />} type="primary" onClick={() => { invoiceForm.resetFields(); setInvoiceDrawer(true); }}>
+          <Button icon={<FileTextOutlined />} type="primary" onClick={openInvoiceDrawer}>
             Rechnung erstellen
           </Button>
           <Popconfirm title="Projekt archivieren?" onConfirm={handleArchive} okText="Ja" cancelText="Nein">
@@ -279,42 +289,118 @@ export default function ProjectDetailPage() {
       <Tabs activeKey={activeTab} onChange={(k) => goToTab(k as TabKey)} items={tabItems} />
 
       {/* Task Edit Drawer */}
-      <Drawer title="Task bearbeiten" open={taskDrawer} onClose={() => setTaskDrawer(false)} width={520}>
+      <Drawer
+        title="Task bearbeiten"
+        open={taskDrawer}
+        onClose={() => setTaskDrawer(false)}
+        width={480}
+        styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
+        footer={
+          <Button type="primary" block size="large" loading={updateTask.isPending} onClick={() => taskForm.submit()}>
+            Speichern
+          </Button>
+        }
+      >
         <Form form={taskForm} layout="vertical" onFinish={handleTaskSubmit}>
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input.TextArea autoSize={{ minRows: 2 }} />
+            <Input.TextArea variant="filled" autoSize={{ minRows: 2 }} />
           </Form.Item>
-          <Form.Item name="note" label="Notiz"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item name="hourlyRate" label="Stundensatz"><InputNumber addonBefore="€" style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="fixedCost" label="Fixkosten"><InputNumber addonBefore="€" style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="fixedDuration" label="Fixe Stunden"><InputNumber style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="fixedDate" label="Fixes Datum"><DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" /></Form.Item>
-          <Button type="primary" htmlType="submit" loading={createTask.isPending || updateTask.isPending}>Speichern</Button>
+          <Form.Item name="note" label="Notiz">
+            <Input.TextArea variant="filled" rows={3} />
+          </Form.Item>
+          <Form.Item name="hourlyRate" label="Stundensatz">
+            <InputNumber variant="filled" addonBefore="€" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="fixedCost" label="Fixkosten">
+            <InputNumber variant="filled" addonBefore="€" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="fixedDuration" label="Fixe Stunden">
+            <InputNumber variant="filled" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="fixedDate" label="Fixes Datum">
+            <SmartDatePicker variant="filled" style={{ width: '100%' }} format="DD.MM.YYYY" />
+          </Form.Item>
         </Form>
       </Drawer>
 
       {/* Invoice Create Drawer */}
-      <Drawer title="Rechnung erstellen" open={invoiceDrawer} onClose={() => setInvoiceDrawer(false)} width={520}>
-        <Form form={invoiceForm} layout="vertical" onFinish={handleInvoiceSubmit} initialValues={{ dueDays: 14, showHours: true, showDate: true }}>
-          <Form.Item name="number" label="Rechnungsnummer" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="sentAt" label="Rechnungsdatum"><DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" /></Form.Item>
-          <Form.Item name="dueDays" label="Zahlungsziel (Tage)"><InputNumber style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="note" label="Notiz"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item name="showHours" label="Stunden anzeigen" valuePropName="checked"><Switch /></Form.Item>
-          <Form.Item name="showDate" label="Datum anzeigen" valuePropName="checked"><Switch /></Form.Item>
-          <Form.Item name="reverseCharge" label="Reverse Charge" valuePropName="checked"><Switch /></Form.Item>
-          <Button type="primary" htmlType="submit" loading={createInvoice.isPending}>Rechnung erstellen</Button>
+      <Drawer
+        title="Rechnung erstellen"
+        open={invoiceDrawer}
+        onClose={() => setInvoiceDrawer(false)}
+        width={480}
+        styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
+        footer={
+          <Button type="primary" block size="large" loading={createInvoice.isPending} onClick={() => invoiceForm.submit()}>
+            Rechnung erstellen
+          </Button>
+        }
+      >
+        <Form form={invoiceForm} layout="vertical" onFinish={handleInvoiceSubmit}>
+          <Form.Item name="number" label="Rechnungsnummer" rules={[{ required: true }]}>
+            <Input variant="filled" />
+          </Form.Item>
+          <Form.Item name="sentAt" label="Rechnungsdatum">
+            <SmartDatePicker variant="filled" style={{ width: '100%' }} format="DD.MM.YYYY" />
+          </Form.Item>
+          <Form.Item name="dueDays" label="Zahlungsziel (Tage)">
+            <InputNumber variant="filled" style={{ width: '100%' }} addonAfter="Tage" />
+          </Form.Item>
+          <Form.Item name="note" label="Notiz">
+            <Input.TextArea variant="filled" rows={3} />
+          </Form.Item>
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+              Optionen
+            </div>
+            <div style={{ borderRadius: 8, border: '1px solid #f0f0f0', overflow: 'hidden' }}>
+              {([
+                { name: 'showHours', label: 'Stunden anzeigen' },
+                { name: 'showDate', label: 'Datum anzeigen' },
+                { name: 'reverseCharge', label: 'Reverse Charge' },
+              ] as const).map(({ name, label }, i, arr) => (
+                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid #f0f0f0' : undefined }}>
+                  <span style={{ fontSize: 14 }}>{label}</span>
+                  <Form.Item name={name} valuePropName="checked" noStyle>
+                    <Switch />
+                  </Form.Item>
+                </div>
+              ))}
+            </div>
+          </div>
         </Form>
       </Drawer>
 
       {/* Quote Drawer */}
-      <Drawer title="Angebot erstellen" open={quoteDrawer} onClose={() => setQuoteDrawer(false)} width={520}>
+      <Drawer
+        title="Angebot erstellen"
+        open={quoteDrawer}
+        onClose={() => setQuoteDrawer(false)}
+        width={480}
+        styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
+        footer={
+          <Button type="primary" block size="large" icon={<FilePdfOutlined />} onClick={() => quoteForm.submit()}>
+            PDF erzeugen
+          </Button>
+        }
+      >
         <Form form={quoteForm} layout="vertical" onFinish={handleQuoteSubmit} initialValues={{ showHours: true }}>
           <Form.Item name="title" label="Titel" tooltip={`Standard: "Angebot ${project.name}"`}>
-            <Input placeholder={`Angebot ${project.name}`} />
+            <Input variant="filled" placeholder={`Angebot ${project.name}`} />
           </Form.Item>
-          <Form.Item name="showHours" label="Stunden anzeigen" valuePropName="checked"><Switch /></Form.Item>
-          <Button type="primary" htmlType="submit" icon={<FilePdfOutlined />}>PDF erzeugen</Button>
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+              Optionen
+            </div>
+            <div style={{ borderRadius: 8, border: '1px solid #f0f0f0', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                <span style={{ fontSize: 14 }}>Stunden anzeigen</span>
+                <Form.Item name="showHours" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+            </div>
+          </div>
         </Form>
       </Drawer>
 

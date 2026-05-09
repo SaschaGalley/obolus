@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
   Typography, Table, Button, Tag, Drawer, Form, Input, InputNumber,
-  Select, DatePicker, Space, Popconfirm, Spin, message,
+  Select, Space, Popconfirm, Spin, message,
 } from 'antd';
+import SmartDatePicker from '../../components/SmartDatePicker';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../../hooks/useApi';
@@ -53,6 +54,7 @@ export default function ExpensesListPage() {
       });
     } else {
       form.resetFields();
+      form.setFieldsValue({ type: 'other' });
     }
     setDrawerOpen(true);
   };
@@ -116,24 +118,40 @@ export default function ExpensesListPage() {
       </div>
       <Table dataSource={sorted} columns={columns} rowKey="id" />
 
-      <Drawer title={editingExpense ? 'Ausgabe bearbeiten' : 'Neue Ausgabe'} open={drawerOpen} onClose={() => setDrawerOpen(false)} width={520}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ type: 'other' }}>
+      <Drawer
+        title={editingExpense ? 'Ausgabe bearbeiten' : 'Neue Ausgabe'}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={480}
+        styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
+        footer={
+          <Button
+            type="primary"
+            block
+            size="large"
+            loading={createExpense.isPending || updateExpense.isPending}
+            onClick={() => form.submit()}
+          >
+            {editingExpense ? 'Änderungen speichern' : 'Ausgabe erstellen'}
+          </Button>
+        }
+      >
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item name="cost" label="Betrag" rules={[{ required: true }]}>
-            <InputNumber addonBefore="€" style={{ width: '100%' }} />
+            <InputNumber variant="filled" addonBefore="€" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="tax" label="Steuer">
-            <InputNumber addonBefore="€" style={{ width: '100%' }} />
+            <InputNumber variant="filled" addonBefore="€" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="payedAt" label="Datum">
-            <DatePicker style={{ width: '100%' }} />
+            <SmartDatePicker variant="filled" style={{ width: '100%' }} format="DD.MM.YYYY" />
           </Form.Item>
           <Form.Item name="type" label="Typ">
-            <Select options={expenseTypes.map(({ value, label }) => ({ value, label }))} />
+            <Select variant="filled" options={expenseTypes.map(({ value, label }) => ({ value, label }))} />
           </Form.Item>
           <Form.Item name="note" label="Notiz">
-            <Input.TextArea rows={3} />
+            <Input.TextArea variant="filled" rows={3} />
           </Form.Item>
-          <Button type="primary" htmlType="submit" loading={createExpense.isPending || updateExpense.isPending}>Speichern</Button>
         </Form>
       </Drawer>
     </div>
