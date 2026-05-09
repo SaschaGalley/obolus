@@ -75,16 +75,13 @@ export default function DashboardPage() {
 
   const openProjectColumns = [
     {
-      title: 'Projekt', dataIndex: 'name', key: 'name',
-      render: (name: string, r: any) => (
-        <Space><EntityAvatar name={name} picture={r.picture} fallbackPicture={r.clientPicture} size={24} />{name}</Space>
-      ),
-    },
-    {
       title: 'Kunde', dataIndex: 'clientName', key: 'clientName',
       render: (name: string, r: any) => (
         <Space><EntityAvatar name={name} picture={r.clientPicture} size={24} />{name}</Space>
       ),
+    },
+    {
+      title: 'Projekt', dataIndex: 'name', key: 'name',
     },
     { title: 'Nicht verrechnet', dataIndex: 'unbilled', key: 'unbilled', align: 'right' as const, render: (v: number) => formatCurrency(v) },
   ];
@@ -132,7 +129,7 @@ export default function DashboardPage() {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} xl={12}>
+        <Col xs={24} xxl={12}>
           <Card title="Unbezahlte Rechnungen" size="small">
             {unpaidInvoices.length === 0 ? (
               <Empty description="Keine offenen Rechnungen"/>
@@ -151,7 +148,7 @@ export default function DashboardPage() {
             )}
           </Card>
         </Col>
-        <Col xs={24} xl={12}>
+        <Col xs={24} xxl={12}>
           <Card title="Unverrechnete Projekte" size="small">
             {openProjects.length === 0 ? (
               <Empty description="Keine offenen Projekte"/>
