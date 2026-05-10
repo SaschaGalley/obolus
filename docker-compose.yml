@@ -24,6 +24,9 @@ services:
       dockerfile: packages/api/Dockerfile.dev
     volumes:
       - ./packages/api:/app/packages/api
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
       - api_node_modules:/app/packages/api/node_modules
       - root_node_modules:/app/node_modules
     ports:
@@ -41,6 +44,9 @@ services:
       DATABASE_NAME: d025d88e
       JWT_SECRET: dev-secret-change-in-production-min-32-chars
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+      BOOKAMAT_USER: ${BOOKAMAT_USER:-}
+      BOOKAMAT_API_KEY: ${BOOKAMAT_API_KEY:-}
+      BOOKAMAT_STARTING_YEAR: ${BOOKAMAT_STARTING_YEAR:-2015}
     depends_on:
       mysql:
         condition: service_healthy
@@ -55,6 +61,10 @@ services:
       - ./packages/web/vite.config.ts:/app/packages/web/vite.config.ts
       - ./packages/web/tsconfig.json:/app/packages/web/tsconfig.json
       - ./packages/web/tsconfig.app.json:/app/packages/web/tsconfig.app.json
+      - ./packages/web/package.json:/app/packages/web/package.json:ro
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
     ports:
       - "${PORT_WEB:-8550}:5173"
     environment:

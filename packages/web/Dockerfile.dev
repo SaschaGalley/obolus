@@ -2,7 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.0.5 --activate
 
 # Copy monorepo root files
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -20,4 +20,6 @@ WORKDIR /app/packages/web
 
 EXPOSE 5173
 
-CMD ["pnpm", "dev", "--host"]
+# Re-resolve deps at boot so adding/removing packages doesn't require a rebuild
+# (root files are volume-mounted from the host – see docker-compose.yml).
+CMD ["sh", "-c", "pnpm install --prefer-frozen-lockfile && pnpm dev --host"]

@@ -16,6 +16,7 @@ import ProjectDetailPage from './pages/Projects/ProjectDetailPage';
 import InvoicesListPage from './pages/Invoices/InvoicesListPage';
 import InvoiceDetailPage from './pages/Invoices/InvoiceDetailPage';
 import ExpensesListPage from './pages/Expenses/ExpensesListPage';
+import AccountingPage from './pages/Accounting/AccountingPage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import PayingHabitPage from './pages/Reports/PayingHabitPage';
 
@@ -87,6 +88,7 @@ export default function App() {
                 <Route path="invoices" element={<InvoicesListPage />} />
                 <Route path="invoices/:id" element={<InvoiceDetailPage />} />
                 <Route path="expenses" element={<ExpensesListPage />} />
+                <Route path="accounting" element={<AccountingPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="reports/paying-habit" element={<PayingHabitPage />} />
               </Route>

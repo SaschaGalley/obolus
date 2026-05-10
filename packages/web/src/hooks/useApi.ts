@@ -7,7 +7,7 @@ import {
   invoicesApi,
   expensesApi,
   dashboardApi,
-  accountingApi,
+  bookamatApi,
   searchApi,
   reportsApi,
   activitiesApi,
@@ -319,10 +319,49 @@ export function useDashboard(year?: number) {
   });
 }
 
-export function useAccounting(year?: number) {
+// Bookamat / Accounting
+export function useBookamatOverview() {
   return useQuery({
-    queryKey: ['accounting', year],
-    queryFn: () => accountingApi.getOverview(year).then((r) => r.data),
+    queryKey: ['bookamat', 'overview'],
+    queryFn: () => bookamatApi.getOverview().then((r) => r.data),
+  });
+}
+
+export function useYearSettings() {
+  return useQuery({
+    queryKey: ['bookamat', 'settings'],
+    queryFn: () => bookamatApi.getSettings().then((r) => r.data),
+  });
+}
+
+export function useUpdateYearSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ year, data }: { year: number; data: Record<string, unknown> }) =>
+      bookamatApi.updateSettings(year, data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookamat'] });
+    },
+  });
+}
+
+export function useSyncBookamat() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => bookamatApi.syncAll().then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookamat'] });
+    },
+  });
+}
+
+export function useSyncBookamatYear() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (year: number) => bookamatApi.syncYear(year).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookamat'] });
+    },
   });
 }
 

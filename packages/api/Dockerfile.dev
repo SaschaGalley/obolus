@@ -7,7 +7,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.0.5 --activate
 
 # Copy monorepo root files
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -25,4 +25,7 @@ WORKDIR /app/packages/api
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm migration:run && pnpm install --frozen-lockfile && pnpm start:dev"]
+# Runtime install uses the volume-mounted lockfile (see docker-compose.yml).
+# `--frozen-lockfile` would break dev workflow when adding deps locally;
+# `--prefer-frozen-lockfile` keeps reinstalls fast when nothing changed.
+CMD ["sh", "-c", "pnpm install --prefer-frozen-lockfile && pnpm migration:run && pnpm start:dev"]

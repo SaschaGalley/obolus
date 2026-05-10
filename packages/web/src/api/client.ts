@@ -145,10 +145,16 @@ export const dashboardApi = {
     apiClient.get('/dashboard', { params: { year } }),
 };
 
-// Accounting
-export const accountingApi = {
-  getOverview: (year?: number) =>
-    apiClient.get('/accounting', { params: { year } }),
+// Bookamat (Accounting)
+export const bookamatApi = {
+  getOverview: () => apiClient.get('/bookamat/overview'),
+  syncAll: () => apiClient.post('/bookamat/sync'),
+  syncYear: (year: number) => apiClient.post(`/bookamat/sync/${year}`),
+  getSettings: () => apiClient.get('/bookamat/settings'),
+  updateSettings: (year: number, data: Record<string, unknown>) =>
+    apiClient.patch(`/bookamat/settings/${year}`, data),
+  listBookings: (params?: { year?: number; month?: number }) =>
+    apiClient.get('/bookamat/bookings', { params }),
 };
 
 // Search

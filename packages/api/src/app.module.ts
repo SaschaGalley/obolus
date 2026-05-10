@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClientsModule } from './modules/clients/clients.module';
@@ -10,7 +11,7 @@ import { SessionsModule } from './modules/sessions/sessions.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { ImagesModule } from './modules/images/images.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { AccountingModule } from './modules/accounting/accounting.module';
+import { BookamatModule } from './modules/bookamat/bookamat.module';
 import { SearchModule } from './modules/search/search.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
@@ -20,6 +21,7 @@ import { HealthController } from './health.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -43,7 +45,7 @@ import { HealthController } from './health.controller';
     ExpensesModule,
     ImagesModule,
     DashboardModule,
-    AccountingModule,
+    BookamatModule,
     SearchModule,
     ReportsModule,
     ActivitiesModule,
