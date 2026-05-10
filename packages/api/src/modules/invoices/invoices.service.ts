@@ -23,11 +23,14 @@ export class InvoicesService {
   async getNextNumber(userId: number): Promise<{ number: string }> {
     const currentYear = new Date().getFullYear();
 
+    // Filter by current year and sort by number DESC so zero-padded lexicographic
+    // order matches numeric order (001 < 009 < 010 < 100).
     const lastInvoice = await this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoin('invoice.client', 'client')
       .where('client.user_id = :userId', { userId })
-      .orderBy('invoice.createdAt', 'DESC')
+      .andWhere('invoice.number LIKE :pattern', { pattern: `%/${currentYear}` })
+      .orderBy('invoice.number', 'DESC')
       .select(['invoice.id', 'invoice.number'])
       .getOne();
 
@@ -41,14 +44,8 @@ export class InvoicesService {
     }
 
     const lastSeq = parseInt(match[1], 10);
-    const lastYear = parseInt(match[2], 10);
-
-    if (lastYear === currentYear) {
-      const next = String(lastSeq + 1).padStart(match[1].length, '0');
-      return { number: `${next}/${currentYear}` };
-    }
-
-    return { number: `001/${currentYear}` };
+    const next = String(lastSeq + 1).padStart(match[1].length, '0');
+    return { number: `${next}/${currentYear}` };
   }
 
   async findAll(userId: number, page = 1, limit = 20, clientId?: number, projectId?: number) {

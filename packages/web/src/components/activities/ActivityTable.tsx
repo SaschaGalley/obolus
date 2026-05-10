@@ -56,9 +56,12 @@ const FIELD_LABELS: Record<string, string> = {
 
 const labelField = (k: string) => FIELD_LABELS[k] || k;
 
-function formatValue(v: any): string {
+const BOOL_FIELDS = new Set(['reverseCharge', 'showHours', 'showDate', 'isActive', 'archived']);
+
+function formatValue(v: any, field?: string): string {
   if (v === null || v === undefined) return '—';
   if (typeof v === 'boolean') return v ? 'Ja' : 'Nein';
+  if (field && BOOL_FIELDS.has(field) && (v === 0 || v === 1)) return v === 1 ? 'Ja' : 'Nein';
   const s = String(v);
   return s.length > 60 ? s.slice(0, 57) + '…' : s;
 }
@@ -100,7 +103,7 @@ export default function ActivityTable({
   const columns = [
     {
       title: 'Datum', dataIndex: 'createdAt', key: 'createdAt', width: 150,
-      render: (v: string) => dayjs(v).format('DD.MM.YYYY HH:mm'),
+      render: (v: string) => v ? dayjs(v).format('DD.MM.YYYY HH:mm') : '—',
     },
     {
       title: 'Typ', key: 'logableType', width: 100,
@@ -140,15 +143,15 @@ export default function ActivityTable({
                 return (
                   <span key={k} style={{ fontSize: 12 }}>
                     <span style={{ color: '#888' }}>{label}: </span>
-                    <span style={{ color: '#cf1322' }}>{formatValue(entry.from)}</span>
+                    <span style={{ color: '#cf1322' }}>{formatValue(entry.from, k)}</span>
                     <span style={{ color: '#888' }}> → </span>
-                    <span style={{ color: '#389e0d' }}>{formatValue(entry.to)}</span>
+                    <span style={{ color: '#389e0d' }}>{formatValue(entry.to, k)}</span>
                   </span>
                 );
               }
               return (
                 <span key={k} style={{ fontSize: 12, color: '#888' }}>
-                  {label}: {formatValue(entry)}
+                  {label}: {formatValue(entry, k)}
                 </span>
               );
             })}

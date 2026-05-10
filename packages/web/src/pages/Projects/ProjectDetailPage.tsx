@@ -57,7 +57,7 @@ export default function ProjectDetailPage() {
   const [invoiceForm] = Form.useForm();
   const [quoteForm] = Form.useForm();
 
-  const { data: nextNumberData } = useNextInvoiceNumber();
+  const { refetch: refetchNextNumber } = useNextInvoiceNumber();
 
   const updateProject = useUpdateProject();
   const uploadPicture = useUploadProjectPicture();
@@ -108,10 +108,11 @@ export default function ProjectDetailPage() {
     } catch { message.error('Fehler beim Speichern'); }
   };
 
-  const openInvoiceDrawer = () => {
+  const openInvoiceDrawer = async () => {
     invoiceForm.resetFields();
+    const { data: fresh } = await refetchNextNumber();
     invoiceForm.setFieldsValue({
-      number: nextNumberData?.number ?? '',
+      number: fresh?.number ?? '',
       sentAt: dayjs(),
       dueDays: 14,
       showHours: true,
