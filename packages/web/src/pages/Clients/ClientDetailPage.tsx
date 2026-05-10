@@ -7,7 +7,7 @@ import {
 import { InboxOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import {
   useClient, useUpdateClient, useProjects, useClientInvoices, useClientActivities,
-  useUploadClientPicture,
+  useUploadClientPicture, usePayingHabit,
 } from '../../hooks/useApi';
 import EntityAvatar from '../../components/EntityAvatar';
 import ProjectTable from '../../components/projects/ProjectTable';
@@ -30,6 +30,7 @@ export default function ClientDetailPage() {
   const client = useClient(clientId);
   const updateClient = useUpdateClient();
   const uploadPicture = useUploadClientPicture();
+  const { data: habits = [] } = usePayingHabit();
 
   const isOverview = activeTab === 'overview';
   const previewProjects = useProjects(
@@ -80,6 +81,8 @@ export default function ClientDetailPage() {
 
   const data = client.data;
   if (!data) return null;
+
+  const habit = habits.find((h) => h.clientId === clientId);
 
   // Overview previews
   const previewProjectList = previewProjects.data?.data || [];
@@ -284,6 +287,34 @@ export default function ClientDetailPage() {
           />
         </Descriptions.Item>
       </Descriptions>
+
+      {habit && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'inline-flex', gap: 20, padding: '7px 14px', background: '#f5f5f5', borderRadius: 8, fontSize: 13 }}>
+            <span>
+              <span style={{ color: '#8c8c8c' }}>Zahlungsverhalten: </span>
+            </span>
+            <span>
+              <span style={{ color: '#8c8c8c' }}>Pünktlich </span>
+              <strong style={{ color: '#52c41a' }}>{habit.inTime}</strong>
+            </span>
+            <span>
+              <span style={{ color: '#8c8c8c' }}>Überfällig </span>
+              <strong style={{ color: habit.overdue > 0 ? '#ff4d4f' : '#8c8c8c' }}>{habit.overdue}</strong>
+            </span>
+            <span>
+              <span style={{ color: '#8c8c8c' }}>Ø </span>
+              <strong style={{ color: habit.avg < 14 ? '#52c41a' : habit.avg < 30 ? '#faad14' : '#ff4d4f' }}>
+                {habit.avg} Tage
+              </strong>
+            </span>
+            <span>
+              <span style={{ color: '#8c8c8c' }}>Median </span>
+              <strong>{habit.median} Tage</strong>
+            </span>
+          </div>
+        </div>
+      )}
 
       <Tabs activeKey={activeTab} onChange={(k) => goToTab(k as TabKey)} items={tabItems} />
     </div>
