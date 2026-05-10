@@ -39,9 +39,13 @@ interface YearOverview {
   est_steuerlicher_gewinn: number;
   est_sonderausgaben: number;
   est_bemessungsgrundlage: number;
+  est_vorergebnis: number;
+  est_festgesetzt: number | null;
   est_ergebnis: number;
   est_differenz: number;
 
+  ust_berechnet: number;
+  ust_festgesetzt: number | null;
   ust_ergebnis: number;
   ust_pauschalierung: number;
   ust_differenz: number;
@@ -259,12 +263,16 @@ export default function AccountingPage() {
             <Row title="− Gewinnfreibetrag" years={years} get={(y) => y.est_gewinnfreibetrag} indent muted />
             <Row title="Steuerlicher Gewinn" years={years} get={(y) => y.est_steuerlicher_gewinn} />
             <Row title="− Sonderausgaben" years={years} get={(y) => y.est_sonderausgaben} indent muted />
-            <Row title="Einkommen" years={years} get={(y) => y.est_bemessungsgrundlage} />
-            <Row title="Ergebnis (berechnet)" years={years} get={(y) => y.est_ergebnis} bold />
+            <Row title="Einkommen (Bemessungsgrundlage)" years={years} get={(y) => y.est_bemessungsgrundlage} />
+            <Row title="Berechnet (Tarif)" years={years} get={(y) => y.est_vorergebnis} muted />
+            <Row title="Festgesetzt" years={years} get={(y) => y.est_festgesetzt ?? undefined} bold />
+            <Row title="Ergebnis (verwendet)" years={years} get={(y) => y.est_ergebnis} bold />
             <Row title="Differenz" years={years} get={(y) => y.est_differenz} muted />
 
             <SectionHeader years={years} title="Umsatzsteuer" />
-            <Row title="Ergebnis" years={years} get={(y) => y.ust_ergebnis} />
+            <Row title="Berechnet" years={years} get={(y) => y.ust_berechnet} muted />
+            <Row title="Festgesetzt" years={years} get={(y) => y.ust_festgesetzt ?? undefined} bold />
+            <Row title="Ergebnis (verwendet)" years={years} get={(y) => y.ust_ergebnis} bold />
             <Row title="Pauschalierung" years={years} get={(y) => y.ust_pauschalierung} muted />
             <Row title="Differenz" years={years} get={(y) => y.ust_differenz} muted />
 

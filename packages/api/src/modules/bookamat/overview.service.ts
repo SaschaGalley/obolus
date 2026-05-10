@@ -27,8 +27,9 @@ export interface YearOverview {
 
   // ust
   ust_pauschalierung: number;
-  ust_berechnet: number;
-  ust_ergebnis: number;
+  ust_berechnet: number;          // computed: einnahmen - pauschalierung
+  ust_festgesetzt: number | null; // null when not yet assessed by FA
+  ust_ergebnis: number;           // value actually used: festgesetzt ?? berechnet
   ust_differenz: number;
 
   // est
@@ -38,8 +39,9 @@ export interface YearOverview {
   est_steuerlicher_gewinn: number;
   est_sonderausgaben: number;
   est_bemessungsgrundlage: number;
-  est_vorergebnis: number;
-  est_ergebnis: number;
+  est_vorergebnis: number;        // pure tariff math (no kapitalvermögen, no festgesetzt)
+  est_festgesetzt: number | null; // null when not yet assessed by FA
+  est_ergebnis: number;           // value actually used: festgesetzt ?? (vorergebnis + kapitalvermögen)
   est_differenz: number;
 
   // svs
@@ -167,6 +169,7 @@ export class OverviewService {
 
         ust_pauschalierung: ust.ust_pauschalierung,
         ust_berechnet: ust.ust_berechnet,
+        ust_festgesetzt: settings.ustFestgesetzt == null ? null : num(settings.ustFestgesetzt),
         ust_ergebnis: ust.ust_ergebnis,
         ust_differenz: ust.ust_differenz,
 
@@ -177,6 +180,7 @@ export class OverviewService {
         est_sonderausgaben: num(settings.sonderausgaben),
         est_bemessungsgrundlage: est.est_bemessungsgrundlage,
         est_vorergebnis: est.est_vorergebnis,
+        est_festgesetzt: settings.estFestgesetzt == null ? null : num(settings.estFestgesetzt),
         est_ergebnis: est.est_ergebnis,
         est_differenz: est.est_differenz,
 
