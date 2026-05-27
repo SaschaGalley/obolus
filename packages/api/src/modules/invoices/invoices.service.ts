@@ -135,7 +135,10 @@ export class InvoicesService {
 
     const saved = await this.invoiceRepo.save(invoice);
 
-    // If projectId provided, assign unbilled usable tasks from that project
+    // Track which projects had tasks reassigned, so we can refresh their
+    // cached unbilled/billed aggregates after the bulk UPDATE.
+    let affectedProjectIds: number[] = [];
+
     if (dto.projectId) {
       const project = await this.projectRepo.findOne({
         where: { id: dto.projectId },
@@ -150,6 +153,7 @@ export class InvoicesService {
           .andWhere('invoice_id IS NULL')
           .andWhere('is_active = 1')
           .execute();
+        affectedProjectIds = [dto.projectId];
       }
     } else {
       // No projectId: assign all unbilled usable tasks from all projects of this client
@@ -166,11 +170,22 @@ export class InvoicesService {
           .andWhere('invoice_id IS NULL')
           .andWhere('is_active = 1')
           .execute();
+        affectedProjectIds = projectIds;
       }
     }
 
     // Calculate cost from assigned tasks
     await this.recalculateCost(saved.id);
+
+    // Bugfix: the bulk task UPDATE above moved tasks from "unbilled" to
+    // "billed" on these projects, but their cached aggregates (and the
+    // client's) still reflect the pre-invoice state. Refresh them now so
+    // the projects table / client overview shows the correct unbilled
+    // cost immediately after invoice creation.
+    for (const projectId of affectedProjectIds) {
+      await this.recalculateProject(projectId);
+    }
+    await this.recalculateClient(dto.clientId);
 
     await this.activityLogger.log(userId, 'Invoice', saved.id, 'created');
 
