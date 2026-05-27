@@ -149,9 +149,11 @@ export class DashboardService {
       const sent = i.sentAt ? new Date(i.sentAt) : null;
       let dueDate: string | null = null;
       let overdue = false;
-      if (sent) {
+      // Only compute a Fälligkeit if both sentAt and dueDays are set.
+      // dueDays === null means "kein fixes Zahlungsziel" → invoice is never overdue.
+      if (sent && i.dueDays != null) {
         const due = new Date(sent);
-        due.setDate(due.getDate() + Number(i.dueDays || 14));
+        due.setDate(due.getDate() + Number(i.dueDays));
         dueDate = due.toISOString().split('T')[0];
         overdue = due < new Date();
       }

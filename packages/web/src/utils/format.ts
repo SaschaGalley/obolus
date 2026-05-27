@@ -30,7 +30,9 @@ export function formatDuration(hours: number | string | null | undefined): strin
 export function getInvoiceStatus(invoice: any): { label: string; color: string } {
   if (invoice.payedAt) return { label: 'Bezahlt', color: 'green' };
   if (!invoice.sentAt) return { label: 'Entwurf', color: 'default' };
-  const dueDate = dayjs(invoice.sentAt).add(invoice.dueDays || 14, 'day');
+  // dueDays === null/undefined → kein fixes Zahlungsziel, niemals "überfällig".
+  if (invoice.dueDays == null) return { label: 'Offen', color: 'orange' };
+  const dueDate = dayjs(invoice.sentAt).add(invoice.dueDays, 'day');
   if (dayjs().isAfter(dueDate)) return { label: 'Überfällig', color: 'red' };
   return { label: 'Offen', color: 'orange' };
 }

@@ -53,7 +53,9 @@ export default function InvoiceTable({
       title: 'Fällig am', key: 'dueDate', width: 120,
       render: (_: any, r: any) => {
         if (!r.sentAt) return '-';
-        const due = dayjs(r.sentAt).add(r.dueDays || 14, 'day');
+        // dueDays === null → kein Zahlungsziel → keine Fälligkeit anzeigen.
+        if (r.dueDays == null) return '–';
+        const due = dayjs(r.sentAt).add(r.dueDays, 'day');
         const overdue = !r.payedAt && due.isBefore(dayjs());
         const formatted = formatDate(due.format('YYYY-MM-DD'));
         return overdue ? <Tag color="red">{formatted}</Tag> : formatted;

@@ -54,8 +54,10 @@ export class Invoice {
   @Column({ name: 'sent_at', type: 'date', nullable: true })
   sentAt: string;
 
-  @Column({ name: 'due_days', type: 'int', unsigned: true, default: 14 })
-  dueDays: number;
+  // `null` = kein fixes Zahlungsziel → PDF zeigt "Mit der Bitte um Über-
+  // weisung nach Erhalt der Rechnung" statt eines konkreten Fälligkeitsdatums.
+  @Column({ name: 'due_days', type: 'int', unsigned: true, nullable: true })
+  dueDays: number | null;
 
   @Column({ name: 'payed_at', type: 'date', nullable: true })
   payedAt: string;
@@ -74,14 +76,15 @@ export class Invoice {
   tasks: Task[];
 
   getDueDate(): string | null {
-    if (!this.sentAt) return null;
+    if (!this.sentAt || this.dueDays == null) return null;
     const sent = new Date(this.sentAt);
     sent.setDate(sent.getDate() + this.dueDays);
     return sent.toISOString().split('T')[0];
   }
 
   isOverdue(): boolean {
-    if (!this.sentAt || this.payedAt || !this.dueDays) return false;
+    // No deadline configured → never overdue.
+    if (!this.sentAt || this.payedAt || this.dueDays == null) return false;
     const today = new Date().toISOString().split('T')[0];
     return today > this.getDueDate()!;
   }

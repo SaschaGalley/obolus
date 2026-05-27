@@ -114,6 +114,8 @@ export default function ProjectDetailPage() {
     invoiceForm.setFieldsValue({
       number: fresh?.number ?? '',
       sentAt: dayjs(),
+      // Default: kein fixes Zahlungsziel → PDF zeigt "Mit der Bitte um Überweisung …".
+      setDueDays: false,
       dueDays: 14,
       showHours: true,
       showDate: true,
@@ -123,8 +125,12 @@ export default function ProjectDetailPage() {
 
   const handleInvoiceSubmit = async (values: any) => {
     try {
+      // Strip the UI-only `setDueDays` flag; if unchecked, dueDays = null
+      // ("kein fixes Zahlungsziel" → PDF zeigt Überweisungs-Hinweis).
+      const { setDueDays, dueDays, ...rest } = values;
       await createInvoice.mutateAsync({
-        ...values,
+        ...rest,
+        dueDays: setDueDays ? dueDays : null,
         clientId: project.clientId,
         projectId: project.id,
         sentAt: values.sentAt?.format('YYYY-MM-DD') || null,
@@ -344,8 +350,17 @@ export default function ProjectDetailPage() {
           <Form.Item name="sentAt" label="Rechnungsdatum">
             <SmartDatePicker variant="filled" style={{ width: '100%' }} format="DD.MM.YYYY" />
           </Form.Item>
-          <Form.Item name="dueDays" label="Zahlungsziel (Tage)">
-            <InputNumber variant="filled" style={{ width: '100%' }} addonAfter="Tage" />
+          <Form.Item
+            shouldUpdate={(prev, cur) => prev.setDueDays !== cur.setDueDays}
+            noStyle
+          >
+            {({ getFieldValue }) =>
+              getFieldValue('setDueDays') ? (
+                <Form.Item name="dueDays" label="Zahlungsziel (Tage)">
+                  <InputNumber variant="filled" style={{ width: '100%' }} addonAfter="Tage" min={0} />
+                </Form.Item>
+              ) : null
+            }
           </Form.Item>
           <Form.Item name="note" label="Notiz">
             <Input.TextArea variant="filled" rows={3} />
@@ -356,6 +371,7 @@ export default function ProjectDetailPage() {
             </div>
             <div style={{ borderRadius: 8, border: '1px solid #f0f0f0', overflow: 'hidden' }}>
               {([
+                { name: 'setDueDays', label: 'Zahlungsziel setzen' },
                 { name: 'showHours', label: 'Stunden anzeigen' },
                 { name: 'showDate', label: 'Datum anzeigen' },
                 { name: 'reverseCharge', label: 'Reverse Charge' },

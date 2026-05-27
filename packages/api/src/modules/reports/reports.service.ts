@@ -52,7 +52,9 @@ export class ReportsService {
         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         daysArray.push(days);
 
-        if (days <= inv.dueDays) {
+        // dueDays === null → kein fixes Zahlungsziel: zähle als "pünktlich",
+        // sonst Vergleich gegen das gesetzte Zahlungsziel.
+        if (inv.dueDays == null || days <= inv.dueDays) {
           inTime++;
         } else {
           overdue++;

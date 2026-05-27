@@ -25,10 +25,12 @@ export class CreateInvoiceDto {
   @IsString()
   sentAt?: string;
 
-  @ApiPropertyOptional({ default: 14 })
+  // `null` (oder weggelassen) = kein Zahlungsziel → PDF zeigt
+  // "Mit der Bitte um Überweisung nach Erhalt …" statt Fälligkeitsdatum.
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsNumber()
-  dueDays?: number;
+  dueDays?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Typography, Descriptions, Tag, Button, Input, InputNumber,
-  Switch, Spin, Empty, Breadcrumb, message, Divider,
+  Switch, Spin, Empty, Breadcrumb, message, Divider, Space,
 } from 'antd';
 import SmartDatePicker from '../../components/SmartDatePicker';
 import { FilePdfOutlined } from '@ant-design/icons';
@@ -98,18 +98,30 @@ export default function InvoiceDetailPage() {
             onChange={(d) => save({ sentAt: d ? (d as import('dayjs').Dayjs).format('YYYY-MM-DD') : null })}
           />
         </Descriptions.Item>
-        <Descriptions.Item label="Zahlungsziel (Tage)">
-          <InputNumber
-            key={invoice.dueDays}
-            defaultValue={invoice.dueDays ?? 14}
-            min={0}
-            variant="borderless"
-            style={{ width: '100%', padding: 0 }}
-            onBlur={(e) => {
-              const v = parseInt(e.target.value);
-              if (!isNaN(v) && v !== invoice.dueDays) save({ dueDays: v });
-            }}
-          />
+        <Descriptions.Item label="Zahlungsziel">
+          <Space size={8} style={{ width: '100%' }}>
+            <Switch
+              size="small"
+              checked={invoice.dueDays != null}
+              onChange={(checked) => save({ dueDays: checked ? 14 : null })}
+            />
+            {invoice.dueDays != null ? (
+              <InputNumber
+                key={`dd-${invoice.dueDays}`}
+                defaultValue={invoice.dueDays}
+                min={0}
+                variant="borderless"
+                addonAfter="Tage"
+                style={{ width: 160, padding: 0 }}
+                onBlur={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v) && v !== invoice.dueDays) save({ dueDays: v });
+                }}
+              />
+            ) : (
+              <Text type="secondary" style={{ fontSize: 13 }}>kein fixes Ziel · Überweisung nach Erhalt</Text>
+            )}
+          </Space>
         </Descriptions.Item>
         <Descriptions.Item label="Bezahlt am">
           <SmartDatePicker
@@ -122,9 +134,9 @@ export default function InvoiceDetailPage() {
           />
         </Descriptions.Item>
         <Descriptions.Item label="Fällig am">
-          {invoice.sentAt
-            ? formatDate(dayjs(invoice.sentAt).add(invoice.dueDays || 14, 'day').format('YYYY-MM-DD'))
-            : '-'}
+          {invoice.sentAt && invoice.dueDays != null
+            ? formatDate(dayjs(invoice.sentAt).add(invoice.dueDays, 'day').format('YYYY-MM-DD'))
+            : '–'}
         </Descriptions.Item>
         <Descriptions.Item label="Stunden anzeigen">
           <Switch checked={invoice.showHours} onChange={(v) => save({ showHours: v })} />

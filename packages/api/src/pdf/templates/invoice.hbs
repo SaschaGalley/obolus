@@ -24,9 +24,18 @@
                 </td>
                 <td style="text-align: right;">
                     <p>Wien, am {{invoice.sentAt}}</p>
-                    <p>Fällig am: {{invoice.dueDate}}</p>
+                    {{#if invoice.dueDate}}
+                        <p>Fällig am: {{invoice.dueDate}}</p>
+                    {{/if}}
                 </td>
             </tr>
+            {{#unless invoice.dueDate}}
+                <tr>
+                    <td colspan="2">
+                        <p>Mit der Bitte um Überweisung nach Erhalt der Rechnung ohne Abzug auf das angeführte Konto.</p>
+                    </td>
+                </tr>
+            {{/unless}}
             {{#if invoice.reverseCharge}}
                 <tr>
                     <td colspan="2">

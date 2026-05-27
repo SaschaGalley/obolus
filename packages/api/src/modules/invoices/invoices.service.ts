@@ -123,7 +123,8 @@ export class InvoicesService {
       number: dto.number,
       note: dto.note,
       sentAt: dto.sentAt,
-      dueDays: dto.dueDays ?? 14,
+      // null = "kein fixes Zahlungsziel" (Default für neue Rechnungen).
+      dueDays: dto.dueDays === undefined ? null : dto.dueDays,
       payedAt: dto.payedAt,
       showHours: dto.showHours ?? true,
       showDate: dto.showDate ?? true,
