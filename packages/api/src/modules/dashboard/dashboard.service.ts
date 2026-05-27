@@ -6,13 +6,16 @@ export class DashboardService {
   constructor(private readonly dataSource: DataSource) {}
 
   async getStats(userId: number, year?: number) {
-    let yearFilterTasks = '';
+    // NOTE: the unbilled column does NOT filter by year. Unbilled work is a
+    // current-state aggregate (tasks without an invoice right now) — restricting
+    // it to "tasks created this year" would silently hide all carry-over work
+    // from prior years and the column would show 0 for everyone whose last
+    // unbilled task was created before the selected year.
     let yearFilterSentAt = '';
     let yearFilterPayedAt = '';
     const params: any[] = [userId];
 
     if (year) {
-      yearFilterTasks = 'AND YEAR(tasks.created_at) = ?';
       yearFilterSentAt = 'AND YEAR(invoices.sent_at) = ?';
       yearFilterPayedAt = 'AND YEAR(invoices.payed_at) = ?';
     }
@@ -73,7 +76,6 @@ export class DashboardService {
             WHERE projects.client_id = clients.id
               AND invoice_id IS NULL
               AND tasks.is_active = 1
-              ${yearFilterTasks}
           ), 0) AS unbilled,
           IFNULL((
             SELECT SUM(invoices.calculated_cost)
@@ -103,10 +105,10 @@ export class DashboardService {
       HAVING total > 0
     `;
 
-    // Build params array: year is repeated for each subquery that needs it, then userId at the end
+    // Build params array: year is repeated for each subquery that uses it, then userId at the end.
+    // Unbilled has no year filter (current state), so we skip its slot.
     const queryParams: any[] = [];
     if (year) {
-      queryParams.push(year); // yearFilterTasks
       queryParams.push(year); // yearFilterSentAt (billed)
       queryParams.push(year); // yearFilterPayedAt (payed)
       queryParams.push(year); // yearFilterSentAt (unpayed)
