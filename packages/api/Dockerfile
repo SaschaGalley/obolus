@@ -30,8 +30,6 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app/packages/api
 
-RUN corepack enable && corepack prepare pnpm@11.0.5 --activate
-
 # Install Chromium for Puppeteer PDF generation
 RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
@@ -46,4 +44,9 @@ COPY --from=builder /app/packages/api/migrations ./migrations
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm migration:run:prod && pnpm start:prod"]
+# Call node directly instead of via `pnpm run`. pnpm 11 added an automatic
+# `runDepsStatusCheck` before script execution that internally calls
+# `pnpm install` — which fails with ERR_PNPM_IGNORED_BUILDS on packages with
+# postinstall scripts (sharp, esbuild, ...). We don't need pnpm at runtime
+# at all — deps are already installed in the builder stage.
+CMD ["sh", "-c", "node dist/database/migrate.js && node dist/main.js"]
