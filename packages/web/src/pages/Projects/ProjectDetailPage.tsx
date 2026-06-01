@@ -119,6 +119,10 @@ export default function ProjectDetailPage() {
       dueDays: 14,
       showHours: true,
       showDate: true,
+      // Reverse Charge aus dem Kunden vorbelegen – Switch im Drawer kann
+      // pro Rechnung überschrieben werden. !! normalisiert MariaDB TINYINT
+      // (0/1) zu echtem Boolean für das Switch-Component.
+      reverseCharge: !!project.client?.reverseCharge,
     });
     setInvoiceDrawer(true);
   };
@@ -137,7 +141,9 @@ export default function ProjectDetailPage() {
         clientName: project.client?.name,
         clientAddress: project.client?.address,
         clientVatNumber: project.client?.vatNumber,
-        reverseCharge: project.client?.reverseCharge || false,
+        // reverseCharge kommt aus dem Form (Switch); fällt zurück auf den
+        // Kunden-Default, falls das Feld fehlt.
+        reverseCharge: values.reverseCharge ?? !!project.client?.reverseCharge,
       });
       message.success('Rechnung erstellt');
       setInvoiceDrawer(false);
