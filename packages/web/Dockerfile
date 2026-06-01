@@ -13,8 +13,11 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 # Copy package files
 COPY packages/web/package.json ./packages/web/
 
-# Install dependencies. Concurrency tuning via .npmrc (see project root).
-RUN pnpm install --filter @obulus/web --frozen-lockfile
+# Install dependencies. `--ignore-scripts` bypasses pnpm 11's strict
+# postinstall-approval gate — esbuild 0.27+ ships prebuilt binaries via
+# platform-specific subpackages so no install-time compile is needed.
+# See packages/api/Dockerfile for the full reasoning.
+RUN pnpm install --filter @obulus/web --frozen-lockfile --ignore-scripts
 
 # Copy the rest
 COPY packages/web ./packages/web

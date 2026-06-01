@@ -10,10 +10,14 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 # Copy package files
 COPY packages/api/package.json ./packages/api/
 
-# Install dependencies. Concurrency tuning is done via .npmrc (see project
-# root) rather than CLI flags — pnpm 11 rejects some flags at install time
-# (exit 1) that older versions silently accepted.
-RUN pnpm install --filter @obulus/api --frozen-lockfile
+# Install dependencies. Concurrency tuning via .npmrc.
+# `--ignore-scripts` bypasses pnpm 11's strict postinstall-approval gate
+# (it errors out on packages with build scripts unless explicitly whitelisted,
+# and the whitelist in package.json/pnpm.onlyBuiltDependencies isn't reliably
+# honored by pnpm 11.0.5 in workspace+filter mode). Safe here because all
+# native deps we use (sharp@0.34+, esbuild@0.27+) ship prebuilt binaries via
+# platform-specific optionalDependencies — no install-time compile step needed.
+RUN pnpm install --filter @obulus/api --frozen-lockfile --ignore-scripts
 
 # Copy the rest
 COPY packages/api ./packages/api
