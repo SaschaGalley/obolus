@@ -27,6 +27,7 @@ services:
       - ./package.json:/app/package.json:ro
       - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
       - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./.npmrc:/app/.npmrc:ro
       - api_node_modules:/app/packages/api/node_modules
       - root_node_modules:/app/node_modules
     ports:
@@ -65,6 +66,7 @@ services:
       - ./package.json:/app/package.json:ro
       - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
       - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./.npmrc:/app/.npmrc:ro
     ports:
       - "${PORT_WEB:-8550}:5173"
     environment:

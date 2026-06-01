@@ -7,17 +7,14 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@11.0.5 --activate
 
-# Copy workspace files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# Copy workspace files (incl. .npmrc for pnpm concurrency settings)
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 
 # Copy package files
 COPY packages/web/package.json ./packages/web/
 
-# Install dependencies. Lower concurrency to keep peak RAM down on small
-# build hosts — see comments in packages/api/Dockerfile.
-RUN pnpm install --filter @obulus/web --frozen-lockfile \
-  --network-concurrency=4 \
-  --child-concurrency=2
+# Install dependencies. Concurrency tuning via .npmrc (see project root).
+RUN pnpm install --filter @obulus/web --frozen-lockfile
 
 # Copy the rest
 COPY packages/web ./packages/web

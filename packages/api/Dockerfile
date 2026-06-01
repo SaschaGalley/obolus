@@ -4,19 +4,16 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@11.0.5 --activate
 
-# Copy workspace files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# Copy workspace files (incl. .npmrc for pnpm concurrency settings)
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 
 # Copy package files
 COPY packages/api/package.json ./packages/api/
 
-# Install dependencies. Lower concurrency to keep peak RAM down on small
-# build hosts (e.g. Coolify VPS) — defaults (network=16, child=5) plus a
-# parallel @obulus/web build are a common OOM trigger ("Gracefully shutting
-# down build container", exit 255 mid-install).
-RUN pnpm install --filter @obulus/api --frozen-lockfile \
-  --network-concurrency=4 \
-  --child-concurrency=2
+# Install dependencies. Concurrency tuning is done via .npmrc (see project
+# root) rather than CLI flags — pnpm 11 rejects some flags at install time
+# (exit 1) that older versions silently accepted.
+RUN pnpm install --filter @obulus/api --frozen-lockfile
 
 # Copy the rest
 COPY packages/api ./packages/api
