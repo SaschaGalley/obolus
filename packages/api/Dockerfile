@@ -15,8 +15,8 @@ COPY packages/api/package.json ./packages/api/
 # parallel @obulus/web build are a common OOM trigger ("Gracefully shutting
 # down build container", exit 255 mid-install).
 RUN pnpm install --filter @obulus/api --frozen-lockfile \
-  --config.network-concurrency=4 \
-  --config.child-concurrency=2
+  --network-concurrency=4 \
+  --child-concurrency=2
 
 # Copy the rest
 COPY packages/api ./packages/api

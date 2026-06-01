@@ -16,8 +16,8 @@ COPY packages/web/package.json ./packages/web/
 # Install dependencies. Lower concurrency to keep peak RAM down on small
 # build hosts — see comments in packages/api/Dockerfile.
 RUN pnpm install --filter @obulus/web --frozen-lockfile \
-  --config.network-concurrency=4 \
-  --config.child-concurrency=2
+  --network-concurrency=4 \
+  --child-concurrency=2
 
 # Copy the rest
 COPY packages/web ./packages/web
