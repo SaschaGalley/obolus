@@ -10,7 +10,7 @@
     "generate-api": "pnpm --filter @obulus/web generate-api"
   },
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=22.13.0",
+    "pnpm": ">=11.0.0"
   }
 }
