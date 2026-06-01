@@ -11,6 +11,9 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME}
       JWT_SECRET: ${JWT_SECRET}
+      BOOKAMAT_USER: ${BOOKAMAT_USER:-}
+      BOOKAMAT_API_KEY: ${BOOKAMAT_API_KEY:-}
+      BOOKAMAT_STARTING_YEAR: ${BOOKAMAT_STARTING_YEAR:-2015}
     volumes:
       - api_uploads:/app/packages/api/uploads
     restart: unless-stopped

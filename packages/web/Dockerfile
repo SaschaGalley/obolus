@@ -5,7 +5,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@11.0.5 --activate
 
 # Copy workspace files
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -13,8 +13,11 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 # Copy package files
 COPY packages/web/package.json ./packages/web/
 
-# Install dependencies
-RUN pnpm install --filter @obulus/web --frozen-lockfile
+# Install dependencies. Lower concurrency to keep peak RAM down on small
+# build hosts — see comments in packages/api/Dockerfile.
+RUN pnpm install --filter @obulus/web --frozen-lockfile \
+  --config.network-concurrency=4 \
+  --config.child-concurrency=2
 
 # Copy the rest
 COPY packages/web ./packages/web
