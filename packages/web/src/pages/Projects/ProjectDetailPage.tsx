@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Typography, Button, Space, Table, Drawer, Form, Input,
   InputNumber, Switch, Modal, Popconfirm, Spin, Breadcrumb,
-  message, Empty, Tabs, Descriptions,
+  message, Empty, Tabs, Descriptions, Select,
 } from 'antd';
 import SmartDatePicker from '../../components/SmartDatePicker';
 import {
@@ -11,7 +11,7 @@ import {
   InboxOutlined, FilePdfOutlined, SortAscendingOutlined,
   CheckOutlined, UndoOutlined,
 } from '@ant-design/icons';
-import ProjectStatusTag from '../../components/projects/ProjectStatusTag';
+import ProjectStatusTag, { PROJECT_STATUS_OPTIONS } from '../../components/projects/ProjectStatusTag';
 import dayjs from 'dayjs';
 import {
   useProject, useUpdateProject, useTasks, useCreateTask, useUpdateTask,
@@ -322,6 +322,16 @@ export default function ProjectDetailPage() {
               const v = parseFloat(e.target.value);
               if (!isNaN(v) && v !== Number(project.hourlyRate)) saveProject({ hourlyRate: v });
             }}
+          />
+        </Descriptions.Item>
+        <Descriptions.Item label="Status">
+          <Select
+            key={project.status}
+            defaultValue={project.status}
+            variant="borderless"
+            style={{ width: '100%', marginLeft: -11 }}
+            options={PROJECT_STATUS_OPTIONS}
+            onChange={(v) => saveProject({ status: v })}
           />
         </Descriptions.Item>
       </Descriptions>
