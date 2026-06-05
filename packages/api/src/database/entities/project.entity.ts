@@ -13,8 +13,22 @@ import { Client } from './client.entity';
 import { Task } from './task.entity';
 import { Image } from './image.entity';
 
+/**
+ * Project lifecycle:
+ *   quoted   → Angebot offen, Tasks sind Schätzungen, zählen NICHT in
+ *              die unbilled/billed-Aggregate, keine Rechnung möglich.
+ *   active   → Laufendes Projekt. Default für Neuanlage.
+ *   archived → Fertig, im UI per Default ausgeblendet.
+ *
+ * Replaces the legacy `archived` boolean (Migration 012).
+ */
+export enum ProjectStatus {
+  QUOTED = 'quoted',
+  ACTIVE = 'active',
+  ARCHIVED = 'archived',
+}
+
 @Entity('obulus_projects')
-@Index('idx_projects_client_archived', ['clientId', 'archived'])
 @Index('idx_projects_client_name', ['clientId', 'name'])
 export class Project {
   @PrimaryGeneratedColumn()
@@ -35,8 +49,8 @@ export class Project {
   @Column({ nullable: true })
   picture: string;
 
-  @Column({ type: 'tinyint', default: 0 })
-  archived: boolean;
+  @Column({ type: 'enum', enum: ProjectStatus, default: ProjectStatus.ACTIVE })
+  status: ProjectStatus;
 
   @Column({ name: 'unbilled_cost', type: 'decimal', precision: 8, scale: 2, default: 0 })
   unbilledCost: number;

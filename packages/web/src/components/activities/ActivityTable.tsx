@@ -30,6 +30,7 @@ const FIELD_LABELS: Record<string, string> = {
   hourlyRate: 'Stundensatz',
   reverseCharge: 'Reverse Charge',
   archived: 'Archiviert',
+  status: 'Status',
   imageId: 'Bild',
   number: 'Nummer',
   sentAt: 'Rechnungsdatum',
@@ -58,8 +59,16 @@ const labelField = (k: string) => FIELD_LABELS[k] || k;
 
 const BOOL_FIELDS = new Set(['reverseCharge', 'showHours', 'showDate', 'isActive', 'archived']);
 
+// Map enum/raw status values to friendly labels for activity log display.
+const STATUS_LABELS: Record<string, string> = {
+  quoted: 'Angeboten',
+  active: 'Laufend',
+  archived: 'Archiviert',
+};
+
 function formatValue(v: any, field?: string): string {
   if (v === null || v === undefined) return '—';
+  if (field === 'status' && typeof v === 'string' && STATUS_LABELS[v]) return STATUS_LABELS[v];
   if (typeof v === 'boolean') return v ? 'Ja' : 'Nein';
   if (field && BOOL_FIELDS.has(field) && (v === 0 || v === 1)) return v === 1 ? 'Ja' : 'Nein';
   const s = String(v);

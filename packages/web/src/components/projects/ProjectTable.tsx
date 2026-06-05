@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, Tag, Space } from 'antd';
+import { Table, Space } from 'antd';
 import { formatCurrency } from '../../utils/format';
 import EntityAvatar from '../EntityAvatar';
+import ProjectStatusTag from './ProjectStatusTag';
 
 export type ProjectColumn =
   | 'name' | 'client' | 'total' | 'unbilled' | 'billed' | 'status';
@@ -79,11 +80,8 @@ export default function ProjectTable({
     status: {
       title: 'Status',
       key: 'status',
-      width: 110,
-      render: (_: any, r: any) =>
-        r.archived
-          ? <Tag color="default">Archiviert</Tag>
-          : <Tag color="green">Aktiv</Tag>,
+      width: 120,
+      render: (_: any, r: any) => <ProjectStatusTag status={r.status} />,
     },
   };
 

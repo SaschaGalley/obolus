@@ -1,6 +1,6 @@
 export { User } from './user.entity';
 export { Client } from './client.entity';
-export { Project } from './project.entity';
+export { Project, ProjectStatus } from './project.entity';
 export { Invoice } from './invoice.entity';
 export { Task } from './task.entity';
 export { Session } from './session.entity';

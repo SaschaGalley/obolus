@@ -9,7 +9,9 @@ import SmartDatePicker from '../../components/SmartDatePicker';
 import {
   PlusOutlined, FileTextOutlined, DeleteOutlined,
   InboxOutlined, FilePdfOutlined, SortAscendingOutlined,
+  CheckOutlined, UndoOutlined,
 } from '@ant-design/icons';
+import ProjectStatusTag from '../../components/projects/ProjectStatusTag';
 import dayjs from 'dayjs';
 import {
   useProject, useUpdateProject, useTasks, useCreateTask, useUpdateTask,
@@ -163,12 +165,16 @@ export default function ProjectDetailPage() {
     updateProject.mutate({ id: projectId, ...patch });
   };
 
-  const handleArchive = async () => {
+  const setStatus = async (status: 'quoted' | 'active' | 'archived', successMsg: string) => {
     try {
-      await updateProject.mutateAsync({ id: projectId, archived: true });
-      message.success('Projekt archiviert');
-      navigate('/projects');
-    } catch { message.error('Fehler beim Archivieren'); }
+      await updateProject.mutateAsync({ id: projectId, status });
+      message.success(successMsg);
+    } catch { message.error('Fehler beim Statuswechsel'); }
+  };
+
+  const handleArchive = async () => {
+    await setStatus('archived', 'Projekt archiviert');
+    navigate('/projects');
   };
 
   const handleSortByDate = () => {
@@ -255,7 +261,10 @@ export default function ProjectDetailPage() {
             uploading={uploadPicture.isPending}
           />
           <div>
-            <Title level={3} style={{ margin: 0 }}>{project.name}</Title>
+            <Space size={8} align="center">
+              <Title level={3} style={{ margin: 0 }}>{project.name}</Title>
+              <ProjectStatusTag status={project.status} />
+            </Space>
             {project.client && <Link to={`/clients/${project.client.id}`}><Text type="secondary">{project.client.name}</Text></Link>}
           </div>
         </Space>
@@ -263,12 +272,30 @@ export default function ProjectDetailPage() {
           <Button icon={<FilePdfOutlined />} onClick={() => { quoteForm.resetFields(); setQuoteDrawer(true); }}>
             Angebot
           </Button>
-          <Button icon={<FileTextOutlined />} type="primary" onClick={openInvoiceDrawer}>
-            Rechnung erstellen
-          </Button>
-          <Popconfirm title="Projekt archivieren?" onConfirm={handleArchive} okText="Ja" cancelText="Nein">
-            <Button danger icon={<InboxOutlined />}>Archivieren</Button>
-          </Popconfirm>
+          {project.status === 'quoted' && (
+            <Button
+              type="primary"
+              icon={<CheckOutlined />}
+              onClick={() => setStatus('active', 'Auftrag erteilt – Projekt jetzt laufend')}
+            >
+              Auftrag erteilt
+            </Button>
+          )}
+          {project.status === 'active' && (
+            <Button icon={<FileTextOutlined />} type="primary" onClick={openInvoiceDrawer}>
+              Rechnung erstellen
+            </Button>
+          )}
+          {project.status !== 'archived' && (
+            <Popconfirm title="Projekt archivieren?" onConfirm={handleArchive} okText="Ja" cancelText="Nein">
+              <Button danger icon={<InboxOutlined />}>Archivieren</Button>
+            </Popconfirm>
+          )}
+          {project.status === 'archived' && (
+            <Button icon={<UndoOutlined />} onClick={() => setStatus('active', 'Projekt reaktiviert')}>
+              Reaktivieren
+            </Button>
+          )}
         </Space>
       </div>
 

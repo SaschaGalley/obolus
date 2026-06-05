@@ -1,11 +1,7 @@
 import { PartialType } from '@nestjs/swagger';
-import { IsOptional, IsBoolean } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateProjectDto } from './create-project.dto';
 
-export class UpdateProjectDto extends PartialType(CreateProjectDto) {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  archived?: boolean;
-}
+// UpdateProjectDto inherits every field from CreateProjectDto (including
+// the new `status` enum) as optional via PartialType. The legacy `archived`
+// bool is gone — set `status: 'archived'` instead.
+export class UpdateProjectDto extends PartialType(CreateProjectDto) {}

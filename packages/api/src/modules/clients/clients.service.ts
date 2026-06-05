@@ -139,7 +139,7 @@ export class ClientsService {
          SELECT task_id, SUM(duration) AS dur
          FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id
        ) s_agg ON s_agg.task_id = t.id
-       WHERE p.client_id = ?`,
+       WHERE p.client_id = ? AND p.status <> 'quoted'`,
       [clientId],
     );
 

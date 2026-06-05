@@ -32,13 +32,14 @@ export class DashboardService {
       [userId],
     );
 
-    // Open projects (unbilled tasks with cost > 0)
+    // Open projects (unbilled tasks with cost > 0). Excludes quoted projects
+    // (their unbilled is just an estimate) and archived projects.
     const openProjects = await this.dataSource.query(
       `SELECT p.id, p.name, p.picture AS projectPicture, p.unbilled_cost AS unbilled, p.unbilled_duration AS unbilledDuration,
               p.client_id AS clientId, c.name AS clientName, c.picture AS clientPicture
        FROM obulus_projects p
        INNER JOIN obulus_clients c ON c.id = p.client_id
-       WHERE c.user_id = ? AND p.archived = 0 AND c.archived = 0 AND p.unbilled_cost > 0
+       WHERE c.user_id = ? AND p.status = 'active' AND c.archived = 0 AND p.unbilled_cost > 0
        ORDER BY p.unbilled_cost DESC`,
       [userId],
     );
@@ -74,6 +75,7 @@ export class DashboardService {
             FROM obulus_tasks AS tasks
             INNER JOIN obulus_projects AS projects ON projects.id = tasks.project_id
             WHERE projects.client_id = clients.id
+              AND projects.status <> 'quoted'
               AND invoice_id IS NULL
               AND tasks.is_active = 1
           ), 0) AS unbilled,

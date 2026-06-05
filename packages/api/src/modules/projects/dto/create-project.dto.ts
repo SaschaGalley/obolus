@@ -1,5 +1,6 @@
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProjectStatus } from '../../../database/entities';
 
 export class CreateProjectDto {
   @ApiProperty()
@@ -19,4 +20,9 @@ export class CreateProjectDto {
   @IsOptional()
   @IsNumber()
   imageId?: number;
+
+  @ApiPropertyOptional({ enum: ProjectStatus, default: ProjectStatus.ACTIVE })
+  @IsOptional()
+  @IsEnum(ProjectStatus)
+  status?: ProjectStatus;
 }

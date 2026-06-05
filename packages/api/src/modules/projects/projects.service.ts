@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Client, Project, Task } from '../../database/entities';
+import { Client, Project, ProjectStatus, Task } from '../../database/entities';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ActivityLoggerService } from '../activities/activity-logger.service';
@@ -20,6 +20,14 @@ export class ProjectsService {
     private readonly imagesService: ImagesService,
   ) {}
 
+  /**
+   * `show` filter semantics:
+   *   - 'active' (default): status = 'active', non-archived clients
+   *   - 'quoted':            status = 'quoted', non-archived clients
+   *   - 'archived':          status = 'archived', or any project of an archived client
+   *   - 'open':              quoted + active (handy for "anything not done")
+   *   - 'all':               no filter
+   */
   async findAll(userId: number, filters: { show?: string; clientId?: number; page?: number; limit?: number } = {}) {
     const { page = 1, limit = 20 } = filters;
     const qb = this.projectRepo
@@ -29,12 +37,19 @@ export class ProjectsService {
       .where('client.user_id = :userId', { userId })
       .orderBy('project.name', 'ASC');
 
-    if (filters.show === 'active') {
-      qb.andWhere('project.archived = 0');
+    if (filters.show === 'active' || filters.show === undefined) {
+      qb.andWhere('project.status = :s', { s: ProjectStatus.ACTIVE });
+      qb.andWhere('client.archived = 0');
+    } else if (filters.show === 'quoted') {
+      qb.andWhere('project.status = :s', { s: ProjectStatus.QUOTED });
+      qb.andWhere('client.archived = 0');
+    } else if (filters.show === 'open') {
+      qb.andWhere('project.status IN (:...ss)', { ss: [ProjectStatus.QUOTED, ProjectStatus.ACTIVE] });
       qb.andWhere('client.archived = 0');
     } else if (filters.show === 'archived') {
-      qb.andWhere('(project.archived = 1 OR client.archived = 1)');
+      qb.andWhere('(project.status = :s OR client.archived = 1)', { s: ProjectStatus.ARCHIVED });
     }
+    // 'all' → no extra filter
 
     if (filters.clientId) {
       qb.andWhere('project.client_id = :clientId', { clientId: filters.clientId });
@@ -96,6 +111,7 @@ export class ProjectsService {
       clientId: dto.clientId,
       hourlyRate: dto.hourlyRate,
       imageId: dto.imageId,
+      status: dto.status ?? ProjectStatus.ACTIVE,
     });
     const saved = await this.projectRepo.save(project);
     await this.activityLogger.log(userId, 'Project', saved.id, 'created');
@@ -116,7 +132,7 @@ export class ProjectsService {
     const project = await this.findEntity(userId, id);
     const dirty: Record<string, any> = {};
     const fields: (keyof UpdateProjectDto)[] = [
-      'name', 'clientId', 'hourlyRate', 'imageId', 'archived',
+      'name', 'clientId', 'hourlyRate', 'imageId', 'status',
     ];
     for (const f of fields) {
       if (dto[f] !== undefined && (project as any)[f] !== dto[f]) {

@@ -33,7 +33,7 @@ export class ProjectsController {
   ) {}
 
   @Get()
-  @ApiQuery({ name: 'show', required: false, enum: ['active', 'archived', 'all'] })
+  @ApiQuery({ name: 'show', required: false, enum: ['active', 'quoted', 'open', 'archived', 'all'] })
   @ApiQuery({ name: 'clientId', required: false, type: Number })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })

@@ -43,7 +43,7 @@ export default function ClientDetailPage() {
 
   const isProjectsTab = activeTab === 'projects';
   const [projectsPage, setProjectsPage] = useState(1);
-  const [projectFilter, setProjectFilter] = useState<'active' | 'archived' | 'all'>('active');
+  const [projectFilter, setProjectFilter] = useState<'active' | 'quoted' | 'archived' | 'all'>('active');
   const allProjects = useProjects(
     { clientId, show: 'all', page: projectsPage, limit: 25 },
     { enabled: isProjectsTab },
@@ -139,12 +139,14 @@ export default function ClientDetailPage() {
   // Projects tab
   const allProjectsList = allProjects.data?.data || [];
   const allProjectsTotal = allProjects.data?.total ?? 0;
-  const activeProjectsList = allProjectsList.filter((p: any) => !p.archived);
-  const archivedProjectsList = allProjectsList.filter((p: any) => p.archived);
+  const activeProjectsList   = allProjectsList.filter((p: any) => p.status === 'active');
+  const quotedProjectsList   = allProjectsList.filter((p: any) => p.status === 'quoted');
+  const archivedProjectsList = allProjectsList.filter((p: any) => p.status === 'archived');
   const filteredProjects =
-    projectFilter === 'active' ? activeProjectsList
+    projectFilter === 'active'   ? activeProjectsList
+      : projectFilter === 'quoted'   ? quotedProjectsList
       : projectFilter === 'archived' ? archivedProjectsList
-        : allProjectsList;
+      : allProjectsList;
 
   const projectsTab = (
     <>
@@ -154,9 +156,10 @@ export default function ClientDetailPage() {
         size="small"
         style={{ marginBottom: 12 }}
         items={[
-          { key: 'active', label: `Aktiv (${activeProjectsList.length})` },
+          { key: 'active',   label: `Laufend (${activeProjectsList.length})` },
+          { key: 'quoted',   label: `Angeboten (${quotedProjectsList.length})` },
           { key: 'archived', label: `Archiviert (${archivedProjectsList.length})` },
-          { key: 'all', label: `Alle (${allProjectsTotal})` },
+          { key: 'all',      label: `Alle (${allProjectsTotal})` },
         ]}
       />
       {filteredProjects.length === 0 && !allProjects.isLoading ? (
@@ -164,9 +167,9 @@ export default function ClientDetailPage() {
       ) : (
         <ProjectTable
           projects={filteredProjects}
-          columns={projectFilter === 'archived' || projectFilter === 'all'
-            ? ['name', 'total', 'unbilled', 'status']
-            : ['name', 'total', 'unbilled']}
+          columns={projectFilter === 'active'
+            ? ['name', 'total', 'unbilled']
+            : ['name', 'total', 'unbilled', 'status']}
           hideClient
           loading={allProjects.isLoading}
           pagination={allProjectsTotal > 25 ? {

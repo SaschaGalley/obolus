@@ -15,6 +15,7 @@ import {
 import { PlusOutlined } from '@ant-design/icons';
 import { useProjects, useCreateProject, useClients } from '../../hooks/useApi';
 import ProjectTable from '../../components/projects/ProjectTable';
+import { PROJECT_STATUS_OPTIONS } from '../../components/projects/ProjectStatusTag';
 
 const { Title } = Typography;
 
@@ -40,9 +41,10 @@ export default function ProjectsListPage() {
   };
 
   const tabItems = [
-    { key: 'active', label: 'Aktiv' },
+    { key: 'active',   label: 'Laufend' },
+    { key: 'quoted',   label: 'Angeboten' },
     { key: 'archived', label: 'Archiviert' },
-    { key: 'all', label: 'Alle' },
+    { key: 'all',      label: 'Alle' },
   ];
 
   const clientOptions = (clients.data?.data || []).map((c: any) => ({
@@ -115,6 +117,9 @@ export default function ProjectsListPage() {
           </Form.Item>
           <Form.Item name="hourlyRate" label="Stundensatz">
             <InputNumber variant="filled" min={0} step={5} style={{ width: '100%' }} addonAfter="€/h" />
+          </Form.Item>
+          <Form.Item name="status" label="Status" initialValue="active">
+            <Select variant="filled" options={PROJECT_STATUS_OPTIONS} />
           </Form.Item>
         </Form>
       </Drawer>

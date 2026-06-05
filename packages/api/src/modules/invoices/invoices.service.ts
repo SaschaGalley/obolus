@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Invoice, Task, Session, Project, Client } from '../../database/entities';
@@ -146,6 +146,11 @@ export class InvoicesService {
         relations: ['client'],
       });
       if (project && project.client.userId === userId) {
+        if (project.status === 'quoted') {
+          throw new BadRequestException(
+            'Rechnung kann nicht für ein Projekt im Status "Angeboten" erstellt werden. Bitte zuerst auf "Laufend" setzen.',
+          );
+        }
         await this.taskRepo
           .createQueryBuilder()
           .update(Task)
@@ -157,11 +162,12 @@ export class InvoicesService {
         affectedProjectIds = [dto.projectId];
       }
     } else {
-      // No projectId: assign all unbilled usable tasks from all projects of this client
+      // No projectId: assign all unbilled usable tasks from all NON-QUOTED
+      // projects of this client. Quoted projects hold offer estimates only.
       const clientProjects = await this.projectRepo.find({
         where: { clientId: dto.clientId },
       });
-      const projectIds = clientProjects.map(p => p.id);
+      const projectIds = clientProjects.filter(p => p.status !== 'quoted').map(p => p.id);
       if (projectIds.length > 0) {
         await this.taskRepo
           .createQueryBuilder()
@@ -357,7 +363,7 @@ export class InvoicesService {
        INNER JOIN obulus_projects p ON p.id = t.project_id
        LEFT JOIN (SELECT task_id, SUM(duration) AS dur FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id) s_agg
          ON s_agg.task_id = t.id
-       WHERE p.client_id = ?`,
+       WHERE p.client_id = ? AND p.status <> 'quoted'`,
       [clientId],
     );
     const u = Number(row.unbilledCost) || 0;
