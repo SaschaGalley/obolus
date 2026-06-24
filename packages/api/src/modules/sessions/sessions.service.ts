@@ -63,9 +63,8 @@ export class SessionsService {
     });
     const saved = await this.sessionRepo.save(session);
 
-    await this.recalculateParents(task.project);
-
-    // Update task calculatedCost
+    // Update task calculatedCost BEFORE recalculating parents — recalculate()
+    // reads t.calculated_cost from the DB, so the task must be up-to-date first.
     const updatedTask = await this.taskRepo.findOne({
       where: { id: dto.taskId },
       relations: ['sessions', 'project', 'project.client'],
@@ -74,6 +73,8 @@ export class SessionsService {
       updatedTask.calculatedCost = this.tasksService.getTaskCost(updatedTask);
       await this.taskRepo.save(updatedTask);
     }
+
+    await this.recalculateParents(task.project);
 
     return saved;
   }
@@ -93,11 +94,8 @@ export class SessionsService {
       where: { id: session.taskId },
       relations: ['project', 'project.client'],
     });
-    if (task) {
-      await this.recalculateParents(task.project);
-    }
 
-    // Update task calculatedCost
+    // Update task calculatedCost first so recalculate() reads the correct value.
     const updatedTask = await this.taskRepo.findOne({
       where: { id: session.taskId },
       relations: ['sessions', 'project', 'project.client'],
@@ -105,6 +103,10 @@ export class SessionsService {
     if (updatedTask) {
       updatedTask.calculatedCost = this.tasksService.getTaskCost(updatedTask);
       await this.taskRepo.save(updatedTask);
+    }
+
+    if (task) {
+      await this.recalculateParents(task.project);
     }
 
     return saved;
@@ -120,11 +122,7 @@ export class SessionsService {
     const taskId = session.taskId;
     await this.sessionRepo.remove(session);
 
-    if (task) {
-      await this.recalculateParents(task.project);
-    }
-
-    // Update task calculatedCost
+    // Update task calculatedCost first so recalculate() reads the correct value.
     const updatedTask = await this.taskRepo.findOne({
       where: { id: taskId },
       relations: ['sessions', 'project', 'project.client'],
@@ -132,6 +130,10 @@ export class SessionsService {
     if (updatedTask) {
       updatedTask.calculatedCost = this.tasksService.getTaskCost(updatedTask);
       await this.taskRepo.save(updatedTask);
+    }
+
+    if (task) {
+      await this.recalculateParents(task.project);
     }
   }
 

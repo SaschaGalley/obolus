@@ -32,15 +32,25 @@ export class DashboardService {
       [userId],
     );
 
-    // Open projects (unbilled tasks with cost > 0). Excludes quoted projects
-    // (their unbilled is just an estimate) and archived projects.
+    // Open projects (unbilled tasks with cost > 0). Computes unbilled live from
+    // tasks so stale denormalized columns don't cause a mismatch with the client table.
     const openProjects = await this.dataSource.query(
-      `SELECT p.id, p.name, p.picture AS projectPicture, p.unbilled_cost AS unbilled, p.unbilled_duration AS unbilledDuration,
-              p.client_id AS clientId, c.name AS clientName, c.picture AS clientPicture
+      `SELECT p.id, p.name, p.picture AS projectPicture,
+              p.client_id AS clientId, c.name AS clientName, c.picture AS clientPicture,
+              COALESCE(SUM(CASE WHEN t.invoice_id IS NULL AND t.is_active = 1 THEN t.calculated_cost END), 0) AS unbilled,
+              COALESCE(SUM(CASE WHEN t.invoice_id IS NULL AND t.is_active = 1
+                THEN COALESCE(t.fixed_duration, s_agg.dur, 0) END), 0) AS unbilledDuration
        FROM obulus_projects p
        INNER JOIN obulus_clients c ON c.id = p.client_id
-       WHERE c.user_id = ? AND p.status = 'active' AND c.archived = 0 AND p.unbilled_cost > 0
-       ORDER BY p.unbilled_cost DESC`,
+       LEFT JOIN obulus_tasks t ON t.project_id = p.id
+       LEFT JOIN (
+         SELECT task_id, SUM(duration) AS dur
+         FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id
+       ) s_agg ON s_agg.task_id = t.id
+       WHERE c.user_id = ? AND p.status = 'active' AND c.archived = 0
+       GROUP BY p.id, p.name, p.picture, p.client_id, c.name, c.picture
+       HAVING unbilled > 0
+       ORDER BY unbilled DESC`,
       [userId],
     );
 

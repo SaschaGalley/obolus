@@ -23,6 +23,10 @@ interface YearOverview {
   ust_bezahlt: number;
   est_bezahlt: number;
   expenses: number;
+  angestellt_brutto: number;
+  angestellt_brutto_monatlich: number;
+  angestellt_netto: number;
+  angestellt_netto_monatlich: number;
   netto_gewinn: number;
   netto_gewinn_monatlich: number;
   private_out: number;
@@ -243,6 +247,12 @@ export default function AccountingPage() {
             <SectionHeader years={years} title="Netto Gewinn" />
             <Row title="jährlich" years={years} get={(y) => y.netto_gewinn} indent bold colorByValue />
             <Row title="monatlich" years={years} get={(y) => y.netto_gewinn_monatlich} indent />
+
+            <SectionHeader years={years} title="Vergleich: Angestellter" />
+            <Row title="Brutto jährlich" years={years} get={(y) => y.angestellt_brutto} indent bold />
+            <Row title="Brutto monatlich" years={years} get={(y) => y.angestellt_brutto_monatlich} indent muted />
+            <Row title="Netto jährlich" years={years} get={(y) => y.angestellt_netto} indent bold colorByValue />
+            <Row title="Netto monatlich" years={years} get={(y) => y.angestellt_netto_monatlich} indent colorByValue />
 
             <SectionHeader years={years} title="Privatentnahmen" />
             <Row title="jährlich" years={years} get={(y) => y.private_out} indent color={LOSS_RED} bold />

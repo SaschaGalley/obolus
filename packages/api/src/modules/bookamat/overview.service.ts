@@ -51,6 +51,12 @@ export interface YearOverview {
   svs_summe: number;
   svs_differenz: number;
 
+  // angestellter comparison
+  angestellt_brutto: number;
+  angestellt_brutto_monatlich: number;
+  angestellt_netto: number;
+  angestellt_netto_monatlich: number;
+
   // overview / cumulative
   ausgaben: number;
   netto_gewinn: number;
@@ -146,6 +152,17 @@ export class OverviewService {
       const ausgaben = svs.svs_bezahlt + est.est_bezahlt + ust.ust_bezahlt + expensesRaw;
       const netto_gewinn =
         helpers.income_netto - est.est_ergebnis - expensesRaw - svs.svs_summe + ust.ust_pauschalierung;
+
+      // "Angestellter"-Vergleich: Betriebsergebnis (= Brutto-Äquivalent) → Netto als Arbeitnehmer.
+      // DN-Anteil ASVG: PV 10.25% + KV 3.87% + AV 3.00% + WF 0.50% ≈ 17.62%.
+      const angestellt_brutto = helpers.income_netto - expensesRaw;
+      const DN_SV_RATE = 0.1762;
+      const dn_sv = Math.max(0, angestellt_brutto * DN_SV_RATE);
+      // Werbungskostenpauschale §16 Abs.3 EStG: €132/Jahr
+      const lohnsteuer_basis = Math.max(0, angestellt_brutto - dn_sv - 132);
+      const angestellt_lohnsteuer = this.estProgressiveTariff(settings.year, lohnsteuer_basis, settings);
+      const angestellt_netto = angestellt_brutto - dn_sv - angestellt_lohnsteuer;
+
       const konto_saldo =
         helpers.income_brutto - svs.svs_bezahlt - est.est_bezahlt - ust.ust_bezahlt
         - expensesRaw - private_out + private_in;
@@ -191,6 +208,11 @@ export class OverviewService {
         svs_differenz: svs.svs_differenz,
 
         ausgaben,
+        angestellt_brutto,
+        angestellt_brutto_monatlich: months ? angestellt_brutto / months : 0,
+        angestellt_netto,
+        angestellt_netto_monatlich: months ? angestellt_netto / months : 0,
+
         netto_gewinn,
         netto_gewinn_monatlich: months ? netto_gewinn / months : 0,
         private_out_monatlich: months ? private_out / months : 0,
