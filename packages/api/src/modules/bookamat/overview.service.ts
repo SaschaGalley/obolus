@@ -51,7 +51,8 @@ export interface YearOverview {
   svs_summe: number;
   svs_differenz: number;
 
-  // angestellter comparison (netto_gewinn is the target take-home)
+  // angestellter comparison (netto_gewinn is the target annual take-home)
+  angestellt_netto_monatlich: number;  // net of ONE regular month (≠ annual/12 due to 13./14.)
   angestellt_brutto: number;           // annual brutto (12 months)
   angestellt_brutto_monatlich: number;
   urlaubs_weihnachtsgeld: number;      // 2 × brutto_monatlich (13. + 14. Gehalt)
@@ -161,6 +162,10 @@ export class OverviewService {
       const angestellt_brutto = 12 * angestellt_brutto_monatlich; // laufende Bezüge (12 Monate)
       // 13. + 14. Gehalt (Urlaubs- und Weihnachtsgeld) = 2 × Monatsbrutto.
       const urlaubs_weihnachtsgeld = 2 * angestellt_brutto_monatlich;
+      // Netto EINER laufenden Monatsauszahlung (≠ Jahresnetto/12, da 2 der 14
+      // Auszahlungen die begünstigt besteuerten Sonderzahlungen sind).
+      const angestellt_netto_monatlich =
+        this.employeeNet(angestellt_brutto_monatlich, settings.year, settings).monthlyNet;
       const angestellt_ag_kosten = this.employerCost(angestellt_brutto_monatlich, settings.year);
 
       const konto_saldo =
@@ -207,6 +212,7 @@ export class OverviewService {
         svs_differenz: svs.svs_differenz,
 
         ausgaben,
+        angestellt_netto_monatlich,
         angestellt_brutto,
         angestellt_brutto_monatlich,
         urlaubs_weihnachtsgeld,
@@ -585,15 +591,20 @@ export class OverviewService {
   }
 
   /**
-   * Jahres-Netto eines Angestellten aus dem Monatsbrutto, österreichisches
-   * 14-Gehälter-Modell:
+   * Netto-Aufschlüsselung eines Angestellten aus dem Monatsbrutto,
+   * österreichisches 14-Gehälter-Modell:
    *  - DN-SV laufend 18.07%, auf Sonderzahlungen 17.07% (je bis Höchstbeitragsgrundlage)
    *  - Lohnsteuer laufend: §33-Tarif auf (12 × Brutto − SV − Werbungskostenpauschale €132),
    *    minus Verkehrsabsetzbetrag
    *  - Lohnsteuer Sonderzahlung: 6% auf (13.+14. − SV − €620 Freibetrag)
+   *
+   * Liefert `annual` (Jahresnetto = 14 Auszahlungen) und `monthlyNet` (Netto
+   * EINER laufenden Monatsauszahlung). monthlyNet ist NICHT annual/12: zwei der
+   * 14 Auszahlungen sind die begünstigt besteuerten Sonderzahlungen, daher ist
+   * der laufende Monatsnetto niedriger als annual/12.
    */
-  private employeeAnnualNet(monthlyBrutto: number, year: number, s: YearSettings): number {
-    if (monthlyBrutto <= 0) return 0;
+  private employeeNet(monthlyBrutto: number, year: number, s: YearSettings): { annual: number; monthlyNet: number } {
+    if (monthlyBrutto <= 0) return { annual: 0, monthlyNet: 0 };
     const hoechst = this.svHoechstMonthly(year);
 
     // Laufende Bezüge (12 Monate)
@@ -603,13 +614,15 @@ export class OverviewService {
       0,
       this.estProgressiveTariff(year, lstBasisLaufend, s) - this.verkehrsabsetzbetrag(year),
     );
+    const laufendNetto = 12 * monthlyBrutto - svLaufend - lstLaufend;
 
     // Sonderzahlungen 13./14. (eigene Jahres-Höchstbeitragsgrundlage = 2 × Monat)
     const sonder = 2 * monthlyBrutto;
     const svSonder = Math.min(sonder, 2 * hoechst) * 0.1707;
     const lstSonder = Math.max(0, sonder - svSonder - 620) * 0.06;
+    const sonderNetto = sonder - svSonder - lstSonder;
 
-    return 14 * monthlyBrutto - svLaufend - svSonder - lstLaufend - lstSonder;
+    return { annual: laufendNetto + sonderNetto, monthlyNet: laufendNetto / 12 };
   }
 
   /** Monatsbrutto, das exakt targetNet (Jahres-Netto) ergibt — Binärsuche. */
@@ -617,10 +630,10 @@ export class OverviewService {
     if (targetNet <= 0) return 0;
     let lo = 0;
     let hi = Math.max(2000, targetNet);
-    while (this.employeeAnnualNet(hi, year, s) < targetNet) hi *= 2;
+    while (this.employeeNet(hi, year, s).annual < targetNet) hi *= 2;
     for (let i = 0; i < 80; i++) {
       const mid = (lo + hi) / 2;
-      const net = this.employeeAnnualNet(mid, year, s);
+      const net = this.employeeNet(mid, year, s).annual;
       if (Math.abs(net - targetNet) < 0.01) return mid;
       if (net < targetNet) lo = mid;
       else hi = mid;

@@ -23,6 +23,7 @@ interface YearOverview {
   ust_bezahlt: number;
   est_bezahlt: number;
   expenses: number;
+  angestellt_netto_monatlich: number;
   angestellt_brutto: number;
   angestellt_brutto_monatlich: number;
   urlaubs_weihnachtsgeld: number;
@@ -249,6 +250,7 @@ export default function AccountingPage() {
             <Row title="monatlich" years={years} get={(y) => y.netto_gewinn_monatlich} indent />
 
             <SectionHeader years={years} title="Wäre ich angestellt" />
+            <Row title="Netto / Monat" years={years} get={(y) => y.angestellt_netto_monatlich} indent bold colorByValue />
             <Row title="Brutto / Monat" years={years} get={(y) => y.angestellt_brutto_monatlich} indent bold />
             <Row title="13. + 14. Bezug" years={years} get={(y) => y.urlaubs_weihnachtsgeld} indent muted />
             <Row title="Brutto / Jahr" years={years} get={(y) => y.angestellt_brutto + y.urlaubs_weihnachtsgeld} indent bold />
