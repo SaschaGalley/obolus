@@ -25,8 +25,8 @@ interface YearOverview {
   expenses: number;
   angestellt_brutto: number;
   angestellt_brutto_monatlich: number;
-  angestellt_netto: number;
-  angestellt_netto_monatlich: number;
+  urlaubs_weihnachtsgeld: number;
+  angestellt_ag_kosten: number;
   netto_gewinn: number;
   netto_gewinn_monatlich: number;
   private_out: number;
@@ -249,10 +249,10 @@ export default function AccountingPage() {
             <Row title="monatlich" years={years} get={(y) => y.netto_gewinn_monatlich} indent />
 
             <SectionHeader years={years} title="Vergleich: Angestellter" />
-            <Row title="Brutto jährlich" years={years} get={(y) => y.angestellt_brutto} indent bold />
-            <Row title="Brutto monatlich" years={years} get={(y) => y.angestellt_brutto_monatlich} indent muted />
-            <Row title="Netto jährlich" years={years} get={(y) => y.angestellt_netto} indent bold colorByValue />
-            <Row title="Netto monatlich" years={years} get={(y) => y.angestellt_netto_monatlich} indent colorByValue />
+            <Row title="Brutto monatlich" years={years} get={(y) => y.angestellt_brutto_monatlich} indent bold />
+            <Row title="Brutto jährlich (12 Mt.)" years={years} get={(y) => y.angestellt_brutto} indent muted />
+            <Row title="Urlaubs+Weihnachtsgeld" years={years} get={(y) => y.urlaubs_weihnachtsgeld} indent muted />
+            <Row title="Gesamtkosten Arbeitgeber/Jahr" years={years} get={(y) => y.angestellt_ag_kosten} indent bold color={LOSS_RED} />
 
             <SectionHeader years={years} title="Privatentnahmen" />
             <Row title="jährlich" years={years} get={(y) => y.private_out} indent color={LOSS_RED} bold />

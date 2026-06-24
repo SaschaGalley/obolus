@@ -51,11 +51,11 @@ export interface YearOverview {
   svs_summe: number;
   svs_differenz: number;
 
-  // angestellter comparison
-  angestellt_brutto: number;
+  // angestellter comparison (netto_gewinn is the target take-home)
+  angestellt_brutto: number;           // annual brutto (12 months)
   angestellt_brutto_monatlich: number;
-  angestellt_netto: number;
-  angestellt_netto_monatlich: number;
+  urlaubs_weihnachtsgeld: number;      // 2 × brutto_monatlich (13. + 14. Gehalt)
+  angestellt_ag_kosten: number;        // total employer cost/year incl. AG-SV + Lohnnebenkosten
 
   // overview / cumulative
   ausgaben: number;
@@ -152,22 +152,23 @@ export class OverviewService {
       const ausgaben = svs.svs_bezahlt + est.est_bezahlt + ust.ust_bezahlt + expensesRaw;
       const netto_gewinn =
         helpers.income_netto - est.est_ergebnis - expensesRaw - svs.svs_summe + ust.ust_pauschalierung;
+      const months = settings.activeMonths || 12;
 
-      // "Angestellter"-Vergleich: Betriebsergebnis (= Brutto-Äquivalent) → Netto als Arbeitnehmer.
-      // DN-Anteil ASVG: PV 10.25% + KV 3.87% + AV 3.00% + WF 0.50% ≈ 17.62%.
-      const angestellt_brutto = helpers.income_netto - expensesRaw;
-      const DN_SV_RATE = 0.1762;
-      const dn_sv = Math.max(0, angestellt_brutto * DN_SV_RATE);
-      // Werbungskostenpauschale §16 Abs.3 EStG: €132/Jahr
-      const lohnsteuer_basis = Math.max(0, angestellt_brutto - dn_sv - 132);
-      const angestellt_lohnsteuer = this.estProgressiveTariff(settings.year, lohnsteuer_basis, settings);
-      const angestellt_netto = angestellt_brutto - dn_sv - angestellt_lohnsteuer;
+      // "Angestellter"-Vergleich: Finde Brutto rückwärts aus netto_gewinn (AK Brutto-Netto-Rechner-Logik).
+      // Ziel-Netto = netto_gewinn (gleiches Take-Home wie als Selbstständiger).
+      const angestellt_brutto_monatlich_raw = this.bruttoFromNetto(netto_gewinn, settings.year, settings) / months;
+      const angestellt_brutto = angestellt_brutto_monatlich_raw * months;
+      // 13. + 14. Gehalt (Urlaubs- und Weihnachtsgeld) = 2 × Monatsbrutto.
+      const urlaubs_weihnachtsgeld = 2 * angestellt_brutto_monatlich_raw;
+      // AG-Gesamtkosten/Jahr: PV 12.55% + KV 3.78% + AV 3% + UV 1.20% + MV 1.53% +
+      // WF 0.50% + DB/FLAF 3.90% + DZ 0.40% + KommSt 3% ≈ 29.86% auf 14 Monatsgehälter.
+      const AG_OVERHEAD = 0.2986;
+      const angestellt_ag_kosten = (angestellt_brutto + urlaubs_weihnachtsgeld) * (1 + AG_OVERHEAD);
 
       const konto_saldo =
         helpers.income_brutto - svs.svs_bezahlt - est.est_bezahlt - ust.ust_bezahlt
         - expensesRaw - private_out + private_in;
       const einnahmen_minus_ausgaben = helpers.income_brutto - ausgaben;
-      const months = settings.activeMonths || 12;
 
       partialRows.push({
         year: settings.year,
@@ -209,9 +210,9 @@ export class OverviewService {
 
         ausgaben,
         angestellt_brutto,
-        angestellt_brutto_monatlich: months ? angestellt_brutto / months : 0,
-        angestellt_netto,
-        angestellt_netto_monatlich: months ? angestellt_netto / months : 0,
+        angestellt_brutto_monatlich: angestellt_brutto_monatlich_raw,
+        urlaubs_weihnachtsgeld,
+        angestellt_ag_kosten,
 
         netto_gewinn,
         netto_gewinn_monatlich: months ? netto_gewinn / months : 0,
@@ -558,6 +559,30 @@ export class OverviewService {
       svs_bezahlt,
       svs_differenz,
     };
+  }
+
+  /**
+   * Binary search: find the employee brutto that yields exactly targetNetto after
+   * DN-SV (17.62%) and Lohnsteuer (same §33 EStG tariff as EST, minus Werbungskosten-
+   * pauschale €132). Converges in ≤60 iterations to within 0.5 cent.
+   * DN-SV: PV 10.25% + KV 3.87% + AV 3.00% + WF 0.50% = 17.62%.
+   */
+  private bruttoFromNetto(targetNetto: number, year: number, s: YearSettings): number {
+    if (targetNetto <= 0) return 0;
+    const DN_SV_RATE = 0.1762;
+    let lo = targetNetto;
+    let hi = targetNetto * 4;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const dn_sv = mid * DN_SV_RATE;
+      const lohnsteuer_basis = Math.max(0, mid - dn_sv - 132);
+      const lohnsteuer = this.estProgressiveTariff(year, lohnsteuer_basis, s);
+      const netto = mid - dn_sv - lohnsteuer;
+      if (Math.abs(netto - targetNetto) < 0.005) return mid;
+      if (netto < targetNetto) lo = mid;
+      else hi = mid;
+    }
+    return (lo + hi) / 2;
   }
 }
 
