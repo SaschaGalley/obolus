@@ -96,6 +96,10 @@ interface YearSettings {
 const PROFIT_GREEN = '#16a34a';
 const LOSS_RED = '#dc2626';
 const MUTED = '#64748b';
+// Subtle tint marking the "what-if" employee-comparison block as a hypothetical
+// scenario, visually distinct from the actual accounting numbers.
+const SCENARIO_TINT = '#f5f6fd';
+const ACCENT = '#4f46e5';
 
 export default function AccountingPage() {
   const overview = useBookamatOverview();
@@ -248,11 +252,19 @@ export default function AccountingPage() {
             <Row title="jährlich" years={years} get={(y) => y.netto_gewinn} indent bold colorByValue />
             <Row title="monatlich" years={years} get={(y) => y.netto_gewinn_monatlich} indent />
 
-            <SectionHeader years={years} title="Vergleich: Angestellter" />
-            <Row title="Brutto monatlich" years={years} get={(y) => y.angestellt_brutto_monatlich} indent bold />
-            <Row title="Brutto jährlich (12 Mt.)" years={years} get={(y) => y.angestellt_brutto} indent muted />
-            <Row title="Urlaubs+Weihnachtsgeld" years={years} get={(y) => y.urlaubs_weihnachtsgeld} indent muted />
-            <Row title="Gesamtkosten Arbeitgeber/Jahr" years={years} get={(y) => y.angestellt_ag_kosten} indent bold color={LOSS_RED} />
+            <SectionHeader
+              years={years}
+              title="Wäre ich angestellt"
+              hint="Gehalt für dasselbe Netto · österr. 14-Gehälter-Modell"
+              tint={SCENARIO_TINT}
+              accent={ACCENT}
+            />
+            <Row title="Netto / Jahr (Ausgangsbasis)" years={years} get={(y) => y.netto_gewinn} muted tint={SCENARIO_TINT} />
+            <Row title="Brutto / Monat" years={years} get={(y) => y.angestellt_brutto_monatlich} strong tint={SCENARIO_TINT} />
+            <Row title="14. + 13. (Urlaubs- & Weihnachtsgeld)" years={years} get={(y) => y.urlaubs_weihnachtsgeld} indent muted tint={SCENARIO_TINT} />
+            <Row title="Brutto / Jahr (14 Gehälter)" years={years} get={(y) => y.angestellt_brutto + y.urlaubs_weihnachtsgeld} bold tint={SCENARIO_TINT} />
+            <Row title="Kosten Arbeitgeber / Monat" years={years} get={(y) => y.angestellt_ag_kosten / 12} indent muted tint={SCENARIO_TINT} />
+            <Row title="Kosten Arbeitgeber / Jahr (inkl. Lohnnebenkosten)" years={years} get={(y) => y.angestellt_ag_kosten} bold color={ACCENT} tint={SCENARIO_TINT} />
 
             <SectionHeader years={years} title="Privatentnahmen" />
             <Row title="jährlich" years={years} get={(y) => y.private_out} indent color={LOSS_RED} bold />
@@ -380,23 +392,37 @@ const stickyTop: React.CSSProperties = {
   boxShadow: '0 4px 8px -6px rgba(0,0,0,0.15)',
 };
 
-function SectionHeader({ years, title }: { years: YearOverview[]; title: string }) {
+function SectionHeader({
+  years, title, hint, tint = '#fff', accent,
+}: {
+  years: YearOverview[]; title: string; hint?: string; tint?: string; accent?: string;
+}) {
   return (
-    <tr style={{ background: '#fff' }}>
+    <tr style={{ background: tint }}>
       <td style={{
         ...stickyLeft,
-        background: '#fff',
+        background: tint,
         padding: '20px 14px 6px',
-        fontWeight: 700,
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        color: '#475569',
+        borderTop: tint !== '#fff' ? `2px solid ${accent || '#e2e8f0'}` : undefined,
       }}>
-        {title}
+        <div style={{
+          fontWeight: 700, fontSize: 13, textTransform: 'uppercase',
+          letterSpacing: '0.05em', color: accent || '#475569',
+        }}>
+          {title}
+        </div>
+        {hint && (
+          <div style={{ fontWeight: 400, fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+            {hint}
+          </div>
+        )}
       </td>
       {years.map((y) => (
-        <td key={y.year} style={{ background: '#fff', padding: '20px 14px 6px' }} />
+        <td key={y.year} style={{
+          background: tint,
+          padding: '20px 14px 6px',
+          borderTop: tint !== '#fff' ? `2px solid ${accent || '#e2e8f0'}` : undefined,
+        }} />
       ))}
     </tr>
   );
@@ -411,22 +437,26 @@ interface RowProps {
   indent?: boolean;
   color?: string;
   colorByValue?: boolean;
+  tint?: string;
+  strong?: boolean; // larger, emphasized headline value
 }
 
-function Row({ title, years, get, bold, muted, indent, color, colorByValue }: RowProps) {
+function Row({ title, years, get, bold, muted, indent, color, colorByValue, tint = '#fff', strong }: RowProps) {
   // borderCollapse:'separate' on the table means row borders need to be on
   // the cells (otherwise they don't follow sticky cells when scrolling).
   const cellBorder = '1px solid #f5f5f5';
+  const weight = strong ? 700 : bold ? 600 : 400;
   return (
-    <tr style={{ background: '#fff' }}>
+    <tr style={{ background: tint }}>
       <td style={{
         ...td,
         ...stickyLeft,
-        background: '#fff',
+        background: tint,
         borderTop: cellBorder,
         textAlign: 'left',
         paddingLeft: indent ? 30 : 14,
-        fontWeight: bold ? 600 : 400,
+        fontWeight: weight,
+        fontSize: strong ? 15 : undefined,
         color: muted ? MUTED : '#0f172a',
       }}>
         {title}
@@ -443,8 +473,10 @@ function Row({ title, years, get, bold, muted, indent, color, colorByValue }: Ro
         return (
           <td key={y.year} style={{
             ...td,
+            background: tint,
             borderTop: cellBorder,
-            fontWeight: bold ? 600 : 400,
+            fontWeight: weight,
+            fontSize: strong ? 15 : undefined,
             color: c,
           }}>
             {isNum && num !== 0 ? formatCurrency(num) : '–'}
