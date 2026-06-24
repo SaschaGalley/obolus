@@ -101,12 +101,12 @@ export class TasksService {
       }
     }
 
-    // Recalculate task cost
-    const taskWithRelations = await this.taskRepo.findOne({
-      where: { id: task.id },
-      relations: ['sessions', 'project', 'project.client'],
-    });
-    task.calculatedCost = this.getTaskCost(taskWithRelations || task);
+    // Recompute cost from the UPDATED entity. findOne() already loaded sessions +
+    // project + client, and the new field values were applied above — so this uses
+    // the new duration/rate. (Previously this re-fetched the row from the DB, which
+    // still held the OLD values, leaving calculated_cost one edit behind → stale
+    // unbilled sums in the dashboard.)
+    task.calculatedCost = this.getTaskCost(task);
 
     const saved = await this.taskRepo.save(task);
 
