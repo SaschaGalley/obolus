@@ -154,16 +154,14 @@ export class OverviewService {
         helpers.income_netto - est.est_ergebnis - expensesRaw - svs.svs_summe + ust.ust_pauschalierung;
       const months = settings.activeMonths || 12;
 
-      // "Angestellter"-Vergleich: Finde Brutto rückwärts aus netto_gewinn (AK Brutto-Netto-Rechner-Logik).
-      // Ziel-Netto = netto_gewinn (gleiches Take-Home wie als Selbstständiger).
-      const angestellt_brutto_monatlich_raw = this.bruttoFromNetto(netto_gewinn, settings.year, settings) / months;
-      const angestellt_brutto = angestellt_brutto_monatlich_raw * months;
+      // "Angestellter"-Vergleich: Welches Angestellten-Gehalt ergäbe dasselbe
+      // Netto-Take-Home (= netto_gewinn) wie die Selbständigkeit? Rückgerechnet
+      // über das echte österreichische 14-Gehälter-Modell (siehe employeeNet*).
+      const angestellt_brutto_monatlich = this.monthlyBruttoFromNet(netto_gewinn, settings.year, settings);
+      const angestellt_brutto = 12 * angestellt_brutto_monatlich; // laufende Bezüge (12 Monate)
       // 13. + 14. Gehalt (Urlaubs- und Weihnachtsgeld) = 2 × Monatsbrutto.
-      const urlaubs_weihnachtsgeld = 2 * angestellt_brutto_monatlich_raw;
-      // AG-Gesamtkosten/Jahr: PV 12.55% + KV 3.78% + AV 3% + UV 1.20% + MV 1.53% +
-      // WF 0.50% + DB/FLAF 3.90% + DZ 0.40% + KommSt 3% ≈ 29.86% auf 14 Monatsgehälter.
-      const AG_OVERHEAD = 0.2986;
-      const angestellt_ag_kosten = (angestellt_brutto + urlaubs_weihnachtsgeld) * (1 + AG_OVERHEAD);
+      const urlaubs_weihnachtsgeld = 2 * angestellt_brutto_monatlich;
+      const angestellt_ag_kosten = this.employerCost(angestellt_brutto_monatlich, settings.year);
 
       const konto_saldo =
         helpers.income_brutto - svs.svs_bezahlt - est.est_bezahlt - ust.ust_bezahlt
@@ -210,7 +208,7 @@ export class OverviewService {
 
         ausgaben,
         angestellt_brutto,
-        angestellt_brutto_monatlich: angestellt_brutto_monatlich_raw,
+        angestellt_brutto_monatlich,
         urlaubs_weihnachtsgeld,
         angestellt_ag_kosten,
 
@@ -561,28 +559,89 @@ export class OverviewService {
     };
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // "Angestellter"-Vergleich. Modelliert das österreichische 14-Gehälter-System
+  // wie ein Brutto-Netto-Rechner (AK): laufende Bezüge nach §33-Tarif, Sonder-
+  // zahlungen (13./14.) begünstigt mit 6% (nach €620 Freibetrag).
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /** SV-Höchstbeitragsgrundlage pro Monat (laufende Bezüge), jahresabhängig. */
+  private svHoechstMonthly(year: number): number {
+    const table: Record<number, number> = {
+      2015: 4650, 2016: 4860, 2017: 4980, 2018: 5130, 2019: 5220, 2020: 5370,
+      2021: 5550, 2022: 5670, 2023: 5850, 2024: 6060, 2025: 6450, 2026: 6840,
+    };
+    if (table[year]) return table[year];
+    return year < 2015 ? 4650 : 6840;
+  }
+
+  /** Verkehrsabsetzbetrag pro Jahr (mindert die Lohnsteuer auf laufende Bezüge). */
+  private verkehrsabsetzbetrag(year: number): number {
+    if (year <= 2015) return 291;
+    if (year <= 2022) return 400;
+    if (year === 2023) return 421;
+    if (year === 2024) return 463;
+    return 487; // 2025+
+  }
+
   /**
-   * Binary search: find the employee brutto that yields exactly targetNetto after
-   * DN-SV (17.62%) and Lohnsteuer (same §33 EStG tariff as EST, minus Werbungskosten-
-   * pauschale €132). Converges in ≤60 iterations to within 0.5 cent.
-   * DN-SV: PV 10.25% + KV 3.87% + AV 3.00% + WF 0.50% = 17.62%.
+   * Jahres-Netto eines Angestellten aus dem Monatsbrutto, österreichisches
+   * 14-Gehälter-Modell:
+   *  - DN-SV laufend 18.07%, auf Sonderzahlungen 17.07% (je bis Höchstbeitragsgrundlage)
+   *  - Lohnsteuer laufend: §33-Tarif auf (12 × Brutto − SV − Werbungskostenpauschale €132),
+   *    minus Verkehrsabsetzbetrag
+   *  - Lohnsteuer Sonderzahlung: 6% auf (13.+14. − SV − €620 Freibetrag)
    */
-  private bruttoFromNetto(targetNetto: number, year: number, s: YearSettings): number {
-    if (targetNetto <= 0) return 0;
-    const DN_SV_RATE = 0.1762;
-    let lo = targetNetto;
-    let hi = targetNetto * 4;
-    for (let i = 0; i < 60; i++) {
+  private employeeAnnualNet(monthlyBrutto: number, year: number, s: YearSettings): number {
+    if (monthlyBrutto <= 0) return 0;
+    const hoechst = this.svHoechstMonthly(year);
+
+    // Laufende Bezüge (12 Monate)
+    const svLaufend = 12 * Math.min(monthlyBrutto, hoechst) * 0.1807;
+    const lstBasisLaufend = Math.max(0, 12 * monthlyBrutto - svLaufend - 132);
+    const lstLaufend = Math.max(
+      0,
+      this.estProgressiveTariff(year, lstBasisLaufend, s) - this.verkehrsabsetzbetrag(year),
+    );
+
+    // Sonderzahlungen 13./14. (eigene Jahres-Höchstbeitragsgrundlage = 2 × Monat)
+    const sonder = 2 * monthlyBrutto;
+    const svSonder = Math.min(sonder, 2 * hoechst) * 0.1707;
+    const lstSonder = Math.max(0, sonder - svSonder - 620) * 0.06;
+
+    return 14 * monthlyBrutto - svLaufend - svSonder - lstLaufend - lstSonder;
+  }
+
+  /** Monatsbrutto, das exakt targetNet (Jahres-Netto) ergibt — Binärsuche. */
+  private monthlyBruttoFromNet(targetNet: number, year: number, s: YearSettings): number {
+    if (targetNet <= 0) return 0;
+    let lo = 0;
+    let hi = Math.max(2000, targetNet);
+    while (this.employeeAnnualNet(hi, year, s) < targetNet) hi *= 2;
+    for (let i = 0; i < 80; i++) {
       const mid = (lo + hi) / 2;
-      const dn_sv = mid * DN_SV_RATE;
-      const lohnsteuer_basis = Math.max(0, mid - dn_sv - 132);
-      const lohnsteuer = this.estProgressiveTariff(year, lohnsteuer_basis, s);
-      const netto = mid - dn_sv - lohnsteuer;
-      if (Math.abs(netto - targetNetto) < 0.005) return mid;
-      if (netto < targetNetto) lo = mid;
+      const net = this.employeeAnnualNet(mid, year, s);
+      if (Math.abs(net - targetNet) < 0.01) return mid;
+      if (net < targetNet) lo = mid;
       else hi = mid;
     }
     return (lo + hi) / 2;
+  }
+
+  /**
+   * Arbeitgeber-Gesamtkosten/Jahr für ein Monatsbrutto: 14 Gehälter
+   *  + AG-SV ~21.03% (bis Höchstbeitragsgrundlage)
+   *  + Lohnnebenkosten 8.59% auf das volle Brutto (DB 3.7% + DZ 0.36% + KommSt 3% + MV 1.53%).
+   */
+  private employerCost(monthlyBrutto: number, year: number): number {
+    if (monthlyBrutto <= 0) return 0;
+    const hoechst = this.svHoechstMonthly(year);
+    const AG_SV_RATE = 0.2103;
+    const LNK_RATE = 0.0859;
+    const agSvLaufend = 12 * Math.min(monthlyBrutto, hoechst) * AG_SV_RATE;
+    const agSvSonder = Math.min(2 * monthlyBrutto, 2 * hoechst) * AG_SV_RATE;
+    const lnk = 14 * monthlyBrutto * LNK_RATE;
+    return 14 * monthlyBrutto + agSvLaufend + agSvSonder + lnk;
   }
 }
 
