@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Typography, Descriptions, Tag, Button, Input, InputNumber,
@@ -21,6 +21,7 @@ export default function InvoiceDetailPage() {
   const { data: invoice, isLoading } = useInvoice(invoiceId);
   const updateInvoice = useUpdateInvoice();
   const updateTask = useUpdateTask();
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const projectGroups = useMemo(() => {
     if (!invoice?.tasks) return [];
@@ -57,11 +58,32 @@ export default function InvoiceDetailPage() {
   };
 
   const handlePdf = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    // Open the tab synchronously inside the click gesture. The PDF fetch below
+    // is async (several seconds) — calling window.open AFTER the await loses the
+    // user-activation context and the browser blocks it as a popup (that was the
+    // "erst beim zweiten Klick" bug). We navigate the already-open tab once ready.
+    const win = window.open('', '_blank');
     try {
       const { data } = await invoicesApi.downloadPdf(invoiceId);
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
-      window.open(url, '_blank');
-    } catch { message.error('PDF konnte nicht geladen werden'); }
+      if (win) {
+        win.location.href = url;
+      } else {
+        // Popup was blocked anyway → fall back to a download.
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Rechnung-${invoice.number}.pdf`;
+        a.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      win?.close();
+      message.error('PDF konnte nicht geladen werden');
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   return (
@@ -72,7 +94,7 @@ export default function InvoiceDetailPage() {
           <Title level={3} style={{ margin: 0 }}>Rechnung {invoice.number}</Title>
           <Text type="secondary">{invoice.clientName}</Text>
         </div>
-        <Button icon={<FilePdfOutlined />} type="primary" onClick={handlePdf}>PDF</Button>
+        <Button icon={<FilePdfOutlined />} type="primary" loading={pdfLoading} onClick={handlePdf}>PDF</Button>
       </div>
 
       <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }}>

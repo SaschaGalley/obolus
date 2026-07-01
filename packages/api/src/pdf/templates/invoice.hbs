@@ -53,23 +53,23 @@
         </table>
 
         {{#each projects}}
-        <table cellpadding="0" cellspacing="0" style="margin-top: 50px;">
+        <table cellpadding="0" cellspacing="0" style="margin-top: 50px; table-layout: fixed;">
             <thead>
                 <tr>
-                    <th style="text-align: left;">{{this.name}}</th>
+                    <th style="text-align: left; word-wrap: break-word; overflow-wrap: anywhere;">{{this.name}}</th>
                     {{#if ../invoice.showDate}}
-                    <th style="width: 100px;">Datum</th>
+                    <th style="width: 68px;">Datum</th>
                     {{/if}}
                     {{#if ../invoice.showHours}}
-                    <th style="width: 100px;">Stunden</th>
+                    <th style="width: 56px;">Stunden</th>
                     {{/if}}
-                    <th style="width: 100px;">Betrag</th>
+                    <th style="width: 80px;">Betrag</th>
                 </tr>
             </thead>
             <tbody>
                 {{#each this.tasks}}
                 <tr class="task">
-                    <td style="text-align: left;">
+                    <td style="text-align: left; word-wrap: break-word; overflow-wrap: anywhere;">
                         {{{this.name}}}
                         {{#if this.note}}
                             <p class="task-note">{{{this.note}}}</p>
@@ -88,30 +88,30 @@
         </table>
         {{/each}}
 
-        <table style="page-break-inside: avoid;" cellpadding="0" cellspacing="0">
+        <table style="page-break-inside: avoid; table-layout: fixed;" cellpadding="0" cellspacing="0">
             {{#unless invoice.reverseCharge}}
                 <tr class="netto">
                     <td style="text-align: left;">Nettobetrag</td>
-                    {{#if invoice.showDate}}<td style="width: 100px;"></td>{{/if}}
-                    {{#if invoice.showHours}}<td style="width: 100px;">{{totalDuration}}</td>{{/if}}
-                    <td style="width: 100px;">&euro;{{totalCost}}</td>
+                    {{#if invoice.showDate}}<td style="width: 68px;"></td>{{/if}}
+                    {{#if invoice.showHours}}<td style="width: 56px;">{{totalDuration}}</td>{{/if}}
+                    <td style="width: 80px;">&euro;{{totalCost}}</td>
                 </tr>
                 <tr class="tax">
                     <td style="text-align: left;">20% USt.</td>
-                    {{#if invoice.showDate}}<td></td>{{/if}}
-                    {{#if invoice.showHours}}<td></td>{{/if}}
-                    <td>&euro;{{tax}}</td>
+                    {{#if invoice.showDate}}<td style="width: 68px;"></td>{{/if}}
+                    {{#if invoice.showHours}}<td style="width: 56px;"></td>{{/if}}
+                    <td style="width: 80px;">&euro;{{tax}}</td>
                 </tr>
             {{/unless}}
             <tr class="total">
                 <td style="text-align: left;">Gesamtsumme</td>
-                {{#if invoice.showDate}}<td style="width: 100px;"></td>{{/if}}
+                {{#if invoice.showDate}}<td style="width: 68px;"></td>{{/if}}
                 {{#if invoice.showHours}}
-                <td style="width: 100px;">
+                <td style="width: 56px;">
                     {{#if invoice.reverseCharge}}{{totalDuration}}{{/if}}
                 </td>
                 {{/if}}
-                <td style="width: 100px;">&euro;{{total}}</td>
+                <td style="width: 80px;">&euro;{{total}}</td>
             </tr>
         </table>
 

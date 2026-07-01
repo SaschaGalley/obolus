@@ -53,6 +53,7 @@ export default function ProjectDetailPage() {
   const [editingTask, setEditingTask] = useState<any>(null);
   const [invoiceDrawer, setInvoiceDrawer] = useState(false);
   const [quoteDrawer, setQuoteDrawer] = useState(false);
+  const [quotePdfLoading, setQuotePdfLoading] = useState(false);
   const [sessionsTaskId, setSessionsTaskId] = useState<number | null>(null);
 
   const [taskForm] = Form.useForm();
@@ -152,13 +153,33 @@ export default function ProjectDetailPage() {
     } catch { message.error('Fehler beim Erstellen der Rechnung'); }
   };
 
-  const handleQuoteSubmit = async (values: any) => {
+  const handleQuotePdf = async () => {
+    if (quotePdfLoading) return;
+    setQuotePdfLoading(true);
+    // Open the tab synchronously inside the click gesture — window.open after the
+    // async PDF fetch would be blocked as a popup (same "zweiter Klick"-Bug wie
+    // bei der Rechnung). Keine Pflichtfelder → getFieldsValue statt form.submit().
+    const win = window.open('', '_blank');
     try {
+      const values = quoteForm.getFieldsValue();
       const { data } = await projectsApi.downloadQuote(projectId, values);
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
-      window.open(url, '_blank');
+      if (win) {
+        win.location.href = url;
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Angebot ${project.name}.pdf`;
+        a.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setQuoteDrawer(false);
-    } catch { message.error('Fehler beim Erstellen des Angebots'); }
+    } catch {
+      win?.close();
+      message.error('Fehler beim Erstellen des Angebots');
+    } finally {
+      setQuotePdfLoading(false);
+    }
   };
 
   const saveProject = (patch: Record<string, any>) => {
@@ -439,12 +460,12 @@ export default function ProjectDetailPage() {
         width={480}
         styles={{ body: { padding: '24px' }, footer: { padding: '12px 24px' } }}
         footer={
-          <Button type="primary" block size="large" icon={<FilePdfOutlined />} onClick={() => quoteForm.submit()}>
+          <Button type="primary" block size="large" icon={<FilePdfOutlined />} loading={quotePdfLoading} onClick={handleQuotePdf}>
             PDF erzeugen
           </Button>
         }
       >
-        <Form form={quoteForm} layout="vertical" onFinish={handleQuoteSubmit} initialValues={{ showHours: true }}>
+        <Form form={quoteForm} layout="vertical" onFinish={handleQuotePdf} initialValues={{ showHours: true }}>
           <Form.Item name="title" label="Titel" tooltip={`Standard: "Angebot ${project.name}"`}>
             <Input variant="filled" placeholder={`Angebot ${project.name}`} />
           </Form.Item>
