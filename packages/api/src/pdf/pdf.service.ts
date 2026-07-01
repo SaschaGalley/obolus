@@ -138,7 +138,8 @@ export class PdfService implements OnModuleDestroy {
     };
 
     const html = await this.renderTemplate('invoice', templateData);
-    return this.htmlToPdf(html, `Rechnung ${invoice.number}`);
+    // Rechnungen mit schmälerem Seitenrand (~33% weniger als der Default 2.54cm).
+    return this.htmlToPdf(html, `Rechnung ${invoice.number}`, '1.7cm');
   }
 
   async generateQuotePdf(
@@ -284,6 +285,7 @@ export class PdfService implements OnModuleDestroy {
   private async htmlToPdf(
     html: string,
     headerTitle: string,
+    marginX = '2.54cm',
   ): Promise<Buffer> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
@@ -304,8 +306,10 @@ export class PdfService implements OnModuleDestroy {
       await (document as any).fonts.ready;
     }, assets.fonts);
 
-    const headerTemplate = await this.renderTemplate('header', { title: headerTitle, assets });
-    const footerTemplate = await this.renderTemplate('footer', { assets });
+    // marginX in Kopf-/Fußzeile mitgeben, damit Logo und Fußzeile bündig mit
+    // dem Body-Rand bleiben (beide nutzen sonst den css-Default 2.54cm).
+    const headerTemplate = await this.renderTemplate('header', { title: headerTitle, assets, marginX });
+    const footerTemplate = await this.renderTemplate('footer', { assets, marginX });
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -316,8 +320,8 @@ export class PdfService implements OnModuleDestroy {
       margin: {
         top: '250px',
         bottom: '150px',
-        left: '2.54cm',
-        right: '2.54cm',
+        left: marginX,
+        right: marginX,
       },
     });
     await page.close();
