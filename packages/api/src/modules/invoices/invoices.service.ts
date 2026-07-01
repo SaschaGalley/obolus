@@ -181,6 +181,12 @@ export class InvoicesService {
       }
     }
 
+    // Rechnungs-Satz einfrieren: den effektiven Satz (Projekt/Kunde) auf die
+    // verrechneten Stunden-Tasks pinnen, damit die Rechnung bei späteren
+    // Projektsatz-Änderungen unverändert bleibt. Wertneutral (Satz = aktueller
+    // effektiver Satz), setzt zusätzlich den Anzeige-Satz der Rechnung.
+    await this.freezeInvoiceRates(saved.id, dto.hourlyRate ?? undefined);
+
     // Calculate cost from assigned tasks
     await this.recalculateCost(saved.id);
 
@@ -220,6 +226,24 @@ export class InvoicesService {
     }
 
     await this.invoiceRepo.save(invoice);
+
+    // Rechnungs-Stundensatz geändert → auf alle stundenbasierten Tasks der
+    // Rechnung anwenden (Override) und die betroffenen Projekt-/Kunden-Aggregate
+    // auffrischen, da sich die verrechneten Kosten ändern.
+    if (dto.hourlyRate !== undefined && dto.hourlyRate !== null) {
+      const rate = Number(dto.hourlyRate);
+      if (!Number.isNaN(rate) && rate !== Number(invoice.hourlyRate)) {
+        dirty.hourlyRate = { from: invoice.hourlyRate, to: rate };
+        await this.applyInvoiceRate(id, rate);
+        const rows = await this.taskRepo.manager.query<any[]>(
+          `SELECT DISTINCT project_id AS pid FROM obulus_tasks WHERE invoice_id = ?`,
+          [id],
+        );
+        for (const r of rows) await this.recalculateProject(Number(r.pid));
+        await this.recalculateClient(invoice.clientId);
+      }
+    }
+
     await this.recalculateCost(id);
 
     if (Object.keys(dirty).length > 0) {
@@ -271,6 +295,61 @@ export class InvoicesService {
       [invoiceId],
     );
     await this.invoiceRepo.update(invoiceId, { calculatedCost: Number(row.total) || 0 });
+  }
+
+  /**
+   * Friert den Stundensatz einer Rechnung auf ihren Tasks ein.
+   * - explicitRate gesetzt (z.B. Nutzer gibt Satz vor): Override auf ALLEN
+   *   stundenbasierten Tasks.
+   * - sonst: den effektiven Satz (Projekt ?? Kunde ?? 65) auf Tasks OHNE eigenen
+   *   Satz "einbrennen" (wertneutral). Danach Anzeige-Satz der Rechnung setzen.
+   * Fixkosten-Tasks bleiben unberührt.
+   */
+  private async freezeInvoiceRates(invoiceId: number, explicitRate?: number) {
+    if (explicitRate !== undefined && explicitRate !== null && !Number.isNaN(Number(explicitRate))) {
+      await this.applyInvoiceRate(invoiceId, Number(explicitRate));
+      return;
+    }
+    await this.taskRepo.manager.query(
+      `UPDATE obulus_tasks t
+         JOIN obulus_projects p ON p.id = t.project_id
+         JOIN obulus_clients c ON c.id = p.client_id
+         LEFT JOIN (SELECT task_id, SUM(duration) dur FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id) s
+           ON s.task_id = t.id
+       SET t.hourly_rate = COALESCE(p.hourly_rate, c.hourly_rate, 65),
+           t.calculated_cost = COALESCE(t.fixed_duration, s.dur, 0) * COALESCE(p.hourly_rate, c.hourly_rate, 65)
+       WHERE t.invoice_id = ? AND t.is_active = 1 AND t.fixed_cost IS NULL AND t.hourly_rate IS NULL`,
+      [invoiceId],
+    );
+    // Anzeige-Satz: nur wenn alle stundenbasierten Tasks denselben Satz haben.
+    await this.taskRepo.manager.query(
+      `UPDATE obulus_invoices inv
+         JOIN (
+           SELECT invoice_id, MIN(hourly_rate) mn, MAX(hourly_rate) mx
+           FROM obulus_tasks
+           WHERE invoice_id = ? AND is_active = 1 AND fixed_cost IS NULL AND hourly_rate IS NOT NULL
+           GROUP BY invoice_id
+         ) r ON r.invoice_id = inv.id
+       SET inv.hourly_rate = r.mn
+       WHERE inv.id = ? AND r.mn = r.mx`,
+      [invoiceId, invoiceId],
+    );
+  }
+
+  /**
+   * Setzt einen Stundensatz per Override auf alle stundenbasierten Tasks der
+   * Rechnung (fixe Kosten bleiben) und speichert ihn als Rechnungs-Satz.
+   */
+  private async applyInvoiceRate(invoiceId: number, rate: number) {
+    await this.taskRepo.manager.query(
+      `UPDATE obulus_tasks t
+         LEFT JOIN (SELECT task_id, SUM(duration) dur FROM obulus_sessions WHERE is_active = 1 GROUP BY task_id) s
+           ON s.task_id = t.id
+       SET t.hourly_rate = ?, t.calculated_cost = COALESCE(t.fixed_duration, s.dur, 0) * ?
+       WHERE t.invoice_id = ? AND t.is_active = 1 AND t.fixed_cost IS NULL`,
+      [rate, rate, invoiceId],
+    );
+    await this.invoiceRepo.update(invoiceId, { hourlyRate: rate });
   }
 
   private calcTaskDuration(task: Task): number {

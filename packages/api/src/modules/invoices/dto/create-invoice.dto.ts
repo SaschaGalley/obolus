@@ -66,4 +66,11 @@ export class CreateInvoiceDto {
   @IsOptional()
   @IsString()
   clientVatNumber?: string;
+
+  // Rechnungs-Stundensatz. Beim Bearbeiten setzt er den Satz auf allen
+  // stundenbasierten Tasks der Rechnung (Override) und friert sie ein.
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsNumber()
+  hourlyRate?: number | null;
 }

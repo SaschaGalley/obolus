@@ -272,7 +272,14 @@ export function useUpdateInvoice() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }: any) => invoicesApi.update(id, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
+    onSuccess: () => {
+      // Rechnungs-Stundensatz/Bezahlt-Status ändern verrechnete Kosten bzw.
+      // Zahlungsstatus → Projekt-/Kunden-Aggregate und Dashboard mit auffrischen.
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
   });
 }
 

@@ -94,7 +94,9 @@ export default function TaskTable({
     [sortedTasks, project],
   );
 
-  const editable = mode === 'project' && !!onUpdate;
+  // Inline-Bearbeitung von Datum/Stunden/Betrag/Name in beiden Modi, sobald ein
+  // onUpdate-Handler da ist (Rechnungs-Tasks sind jetzt genauso editierbar wie Projekt-Tasks).
+  const editable = !!onUpdate;
 
   const handleDragEnd = (event: any) => {
     if (!onReorder) return;

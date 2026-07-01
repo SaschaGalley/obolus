@@ -154,6 +154,24 @@ export default function InvoiceDetailPage() {
         <Descriptions.Item label="Reverse Charge">
           <Switch checked={invoice.reverseCharge} onChange={(v) => save({ reverseCharge: v })} />
         </Descriptions.Item>
+        <Descriptions.Item label="Stundensatz">
+          <InputNumber
+            key={`rate-${invoice.hourlyRate ?? 'none'}`}
+            defaultValue={invoice.hourlyRate != null ? Number(invoice.hourlyRate) : undefined}
+            min={0}
+            step={5}
+            addonAfter="€/h"
+            placeholder="gemischt"
+            variant="borderless"
+            style={{ width: '100%' }}
+            onBlur={(e) => {
+              const v = parseFloat(e.target.value);
+              const cur = invoice.hourlyRate != null ? Number(invoice.hourlyRate) : NaN;
+              // Setzt den Satz auf alle stundenbasierten Tasks der Rechnung.
+              if (!isNaN(v) && v !== cur) save({ hourlyRate: v });
+            }}
+          />
+        </Descriptions.Item>
         <Descriptions.Item label="Notiz" span={invoice.reverseCharge ? 1 : 2}>
           <Input
             key={invoice.note}

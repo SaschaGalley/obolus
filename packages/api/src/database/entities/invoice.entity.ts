@@ -30,6 +30,13 @@ export class Invoice {
   @Column({ name: 'calculated_cost', type: 'decimal', precision: 8, scale: 2, default: 0 })
   calculatedCost: number;
 
+  // Eingefrorener Stundensatz der Rechnung. Beim Erstellen aus dem Projektsatz
+  // übernommen und auf die stundenbasierten Tasks "eingebrannt" (task.hourly_rate),
+  // damit die Rechnung rückwirkend korrekt bleibt, wenn der Projektsatz sich ändert.
+  // null = gemischte Sätze (Feld oben zeigt dann Platzhalter).
+  @Column({ name: 'hourly_rate', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  hourlyRate: number | null;
+
   @Column({ name: 'client_name', nullable: true })
   clientName: string;
 

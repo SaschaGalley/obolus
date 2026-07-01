@@ -117,6 +117,9 @@ export class TasksService {
     if (project) {
       await this.recalculateParents(project);
     }
+    if (task.invoiceId) {
+      await this.recalculateInvoice(task.invoiceId);
+    }
 
     if (Object.keys(dirty).length > 0) {
       await this.activityLogger.log(userId, 'Task', id, 'updated', dirty);
@@ -127,6 +130,7 @@ export class TasksService {
 
   async remove(userId: number, id: number) {
     const task = await this.findOne(userId, id);
+    const invoiceId = task.invoiceId;
     const project = await this.projectRepo.findOne({
       where: { id: task.projectId },
       relations: ['client'],
@@ -136,6 +140,9 @@ export class TasksService {
 
     if (project) {
       await this.recalculateParents(project);
+    }
+    if (invoiceId) {
+      await this.recalculateInvoice(invoiceId);
     }
 
     await this.activityLogger.log(userId, 'Task', id, 'deleted');
@@ -171,5 +178,19 @@ export class TasksService {
   private async recalculateParents(project: Project) {
     await this.projectsService.recalculate(project.id);
     await this.clientsService.recalculate(project.clientId);
+  }
+
+  /**
+   * Refresh a billed invoice's cached total after one of its tasks changed.
+   * Invoice tasks are now editable from the invoice detail page, so edits must
+   * propagate to invoice.calculated_cost (used by the list & dashboard).
+   */
+  private async recalculateInvoice(invoiceId: number) {
+    await this.taskRepo.manager.query(
+      `UPDATE obulus_invoices SET calculated_cost = (
+         SELECT COALESCE(SUM(calculated_cost), 0) FROM obulus_tasks WHERE invoice_id = ? AND is_active = 1
+       ) WHERE id = ?`,
+      [invoiceId, invoiceId],
+    );
   }
 }
