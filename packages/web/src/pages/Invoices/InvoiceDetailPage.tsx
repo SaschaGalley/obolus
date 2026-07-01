@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { useInvoice, useUpdateInvoice, useUpdateTask } from '../../hooks/useApi';
 import { invoicesApi } from '../../api/client';
 import { formatCurrency, formatDate, formatDuration, getInvoiceStatus } from '../../utils/format';
+import { downloadBlob, safeFilename } from '../../utils/download';
 import TaskTable from '../../components/tasks/TaskTable';
 import { sumTasks } from '../../components/tasks/taskCalculations';
 
@@ -60,26 +61,10 @@ export default function InvoiceDetailPage() {
   const handlePdf = async () => {
     if (pdfLoading) return;
     setPdfLoading(true);
-    // Open the tab synchronously inside the click gesture. The PDF fetch below
-    // is async (several seconds) — calling window.open AFTER the await loses the
-    // user-activation context and the browser blocks it as a popup (that was the
-    // "erst beim zweiten Klick" bug). We navigate the already-open tab once ready.
-    const win = window.open('', '_blank');
     try {
       const { data } = await invoicesApi.downloadPdf(invoiceId);
-      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
-      if (win) {
-        win.location.href = url;
-      } else {
-        // Popup was blocked anyway → fall back to a download.
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Rechnung-${invoice.number}.pdf`;
-        a.click();
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      downloadBlob(data, `${safeFilename(`Rechnung ${invoice.number}`)}.pdf`);
     } catch {
-      win?.close();
       message.error('PDF konnte nicht geladen werden');
     } finally {
       setPdfLoading(false);

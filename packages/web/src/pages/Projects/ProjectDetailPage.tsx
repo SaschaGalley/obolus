@@ -23,6 +23,7 @@ import { getTaskDate } from '../../components/tasks/taskCalculations';
 import EntityAvatar from '../../components/EntityAvatar';
 import { projectsApi } from '../../api/client';
 import { formatDate } from '../../utils/format';
+import { downloadBlob, safeFilename } from '../../utils/download';
 import TaskTable from '../../components/tasks/TaskTable';
 import InvoiceTable from '../../components/invoices/InvoiceTable';
 
@@ -156,26 +157,12 @@ export default function ProjectDetailPage() {
   const handleQuotePdf = async () => {
     if (quotePdfLoading) return;
     setQuotePdfLoading(true);
-    // Open the tab synchronously inside the click gesture — window.open after the
-    // async PDF fetch would be blocked as a popup (same "zweiter Klick"-Bug wie
-    // bei der Rechnung). Keine Pflichtfelder → getFieldsValue statt form.submit().
-    const win = window.open('', '_blank');
     try {
       const values = quoteForm.getFieldsValue();
       const { data } = await projectsApi.downloadQuote(projectId, values);
-      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
-      if (win) {
-        win.location.href = url;
-      } else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Angebot ${project.name}.pdf`;
-        a.click();
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      downloadBlob(data, `${safeFilename(values.title || `Angebot ${project.name}`)}.pdf`);
       setQuoteDrawer(false);
     } catch {
-      win?.close();
       message.error('Fehler beim Erstellen des Angebots');
     } finally {
       setQuotePdfLoading(false);
