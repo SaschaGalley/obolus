@@ -18,7 +18,7 @@ import {
   formatCurrency, formatDate, formatDuration,
 } from '../../utils/format';
 import {
-  getTaskDuration, getTaskCost, getTaskDate, sumTasks, getHourlyRate,
+  getTaskDuration, getTaskCost, getTaskDate, sumTasks,
 } from './taskCalculations';
 import SmartDatePicker from '../SmartDatePicker';
 
@@ -154,6 +154,9 @@ export default function TaskTable({
   const columns: any[] = [];
 
   const hasCheckbox = mode === 'project' && !!onToggleUse;
+  // Aktionsspalte, sobald irgendein Handler da ist. In der Rechnung ist nur
+  // onUpdate gesetzt → dort erscheint bloß der €/h-Umschalter, kein Löschen/Edit.
+  const hasActions = !!(onUpdate || onShowSessions || onEdit || onDelete);
 
   if (hasCheckbox) {
     columns.push({
@@ -225,36 +228,6 @@ export default function TaskTable({
     },
   });
 
-  // Rate — invoice mode only
-  if (mode === 'invoice') {
-    columns.push({
-      title: 'Stundensatz', key: 'rate', width: 120, align: 'right' as const,
-      render: (_: any, r: any) => {
-        if (r.fixedCost) return '-';
-        const effectiveRate = getHourlyRate(r, project);
-        if (onUpdate) {
-          return (
-            <InputNumber
-              key={`rate-${r.id}-${effectiveRate}`}
-              defaultValue={effectiveRate}
-              min={0}
-              step={1}
-              style={{ width: 100 }}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) => {
-                const v = parseFloat((e.target as HTMLInputElement).value);
-                if (!isNaN(v) && v !== effectiveRate) {
-                  onUpdate(r.id, { hourlyRate: v });
-                }
-              }}
-            />
-          );
-        }
-        return `€ ${effectiveRate}`;
-      },
-    });
-  }
-
   // Amount
   columns.push({
     title: 'Betrag', key: 'cost', width: 130, align: 'right' as const,
@@ -304,9 +277,9 @@ export default function TaskTable({
     },
   });
 
-  if (mode === 'project') {
+  if (hasActions) {
     columns.push({
-      title: '', key: 'actions', width: 156,
+      title: '', key: 'actions', width: mode === 'project' ? 156 : 64,
       render: (_: any, r: any) => (
         <Space onClick={(e) => e.stopPropagation()}>
           {onShowSessions && (
@@ -447,18 +420,11 @@ export default function TaskTable({
           {addRowInSummary}
           <Table.Summary.Row>
             {hasCheckbox && <Table.Summary.Cell index={0} />}
-            <Table.Summary.Cell index={hasCheckbox ? 1 : 0}>
-              <strong>Gesamt</strong>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={hasCheckbox ? 2 : 1} align="right">
-              <strong>{formatDuration(totals.duration)}</strong>
-            </Table.Summary.Cell>
-            {mode === 'invoice' && <Table.Summary.Cell index={2} />}
-            <Table.Summary.Cell index={hasCheckbox ? 3 : 3} align="right">
-              <strong>{formatCurrency(totals.cost)}</strong>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={hasCheckbox ? 4 : 4} />
-            {mode === 'project' && <Table.Summary.Cell index={hasCheckbox ? 5 : 5} />}
+            <Table.Summary.Cell index={1}><strong>Gesamt</strong></Table.Summary.Cell>
+            <Table.Summary.Cell index={2} align="right"><strong>{formatDuration(totals.duration)}</strong></Table.Summary.Cell>
+            <Table.Summary.Cell index={3} align="right"><strong>{formatCurrency(totals.cost)}</strong></Table.Summary.Cell>
+            <Table.Summary.Cell index={4} />
+            {hasActions && <Table.Summary.Cell index={5} />}
           </Table.Summary.Row>
         </Table.Summary>
       )
