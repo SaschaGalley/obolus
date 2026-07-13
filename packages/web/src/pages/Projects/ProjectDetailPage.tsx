@@ -136,7 +136,7 @@ export default function ProjectDetailPage() {
       // Strip the UI-only `setDueDays` flag; if unchecked, dueDays = null
       // ("kein fixes Zahlungsziel" → PDF zeigt Überweisungs-Hinweis).
       const { setDueDays, dueDays, ...rest } = values;
-      await createInvoice.mutateAsync({
+      const created = await createInvoice.mutateAsync({
         ...rest,
         dueDays: setDueDays ? dueDays : null,
         clientId: project.clientId,
@@ -151,6 +151,8 @@ export default function ProjectDetailPage() {
       });
       message.success('Rechnung erstellt');
       setInvoiceDrawer(false);
+      // Direkt zur neu erstellten Rechnung wechseln.
+      if (created?.id) navigate(`/invoices/${created.id}`);
     } catch { message.error('Fehler beim Erstellen der Rechnung'); }
   };
 
