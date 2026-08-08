@@ -17,6 +17,13 @@ services:
       BOOKAMAT_STARTING_YEAR: ${BOOKAMAT_STARTING_YEAR:-2015}
     volumes:
       - api_uploads:/app/packages/api/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      # Container startet erst die Migrationen, dann Nest — großzügig bemessen
+      start_period: 90s
     restart: unless-stopped
 
   web:
@@ -29,6 +36,12 @@ services:
     depends_on:
       api:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
