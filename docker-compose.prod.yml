@@ -1,5 +1,6 @@
 services:
   api:
+    container_name: obolus-api
     build:
       context: .
       dockerfile: packages/api/Dockerfile
@@ -19,6 +20,7 @@ services:
     restart: unless-stopped
 
   web:
+    container_name: obolus-web
     build:
       context: .
       dockerfile: packages/web/Dockerfile
