@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Col, Empty, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import { Button, Card, Col, Dropdown, Empty, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useDashboard } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
@@ -10,6 +10,10 @@ const { Title } = Typography;
 
 const FIRST_YEAR = 2016;
 const currentYear = new Date().getFullYear();
+const yearMenuItems = Array.from({ length: currentYear - FIRST_YEAR + 1 }, (_, i) => {
+  const y = String(currentYear - i);
+  return { key: y, label: y };
+});
 
 export default function DashboardPage() {
   const [year, setYear] = useState(currentYear);
@@ -99,13 +103,20 @@ export default function DashboardPage() {
             disabled={year <= FIRST_YEAR}
             onClick={() => setYear(year - 1)}
           />
-          <Button
-            style={{ width: 72, fontWeight: 600 }}
-            title="Zum aktuellen Jahr"
-            onClick={() => setYear(currentYear)}
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: yearMenuItems,
+              selectable: true,
+              selectedKeys: [String(year)],
+              onClick: ({ key }) => setYear(Number(key)),
+              style: { maxHeight: 320, overflowY: 'auto' },
+            }}
           >
-            {year}
-          </Button>
+            <Button style={{ width: 72, fontWeight: 600 }} aria-label="Jahr auswählen">
+              {year}
+            </Button>
+          </Dropdown>
           <Button
             icon={<RightOutlined />}
             aria-label="Nächstes Jahr"
