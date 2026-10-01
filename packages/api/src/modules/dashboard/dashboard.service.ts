@@ -6,11 +6,12 @@ export class DashboardService {
   constructor(private readonly dataSource: DataSource) {}
 
   async getStats(userId: number, year?: number) {
-    // NOTE: the unbilled column does NOT filter by year. Unbilled work is a
+    // NOTE: the unbilled column does NOT filter tasks by year. Unbilled work is a
     // current-state aggregate (tasks without an invoice right now) — restricting
     // it to "tasks created this year" would silently hide all carry-over work
-    // from prior years and the column would show 0 for everyone whose last
-    // unbilled task was created before the selected year.
+    // from prior years. Since it can only be invoiced from now on, it belongs to
+    // the current year and is left out entirely when looking at a past year.
+    const includeUnbilled = !year || year >= new Date().getFullYear();
     let yearFilterSentAt = '';
     let yearFilterPayedAt = '';
     const params: any[] = [userId];
@@ -72,6 +73,18 @@ export class DashboardService {
     }
     const [revenueResult] = await this.dataSource.query(revenueQuery, revenueParams);
 
+    const unbilledSelect = includeUnbilled
+      ? `IFNULL((
+            SELECT SUM(tasks.calculated_cost)
+            FROM obulus_tasks AS tasks
+            INNER JOIN obulus_projects AS projects ON projects.id = tasks.project_id
+            WHERE projects.client_id = clients.id
+              AND projects.status <> 'quoted'
+              AND invoice_id IS NULL
+              AND tasks.is_active = 1
+          ), 0)`
+      : '0';
+
     const query = `
       SELECT *, IFNULL(payed, 0) + IFNULL(unpayed, 0) + IFNULL(unbilled, 0) AS total
       FROM (
@@ -80,15 +93,7 @@ export class DashboardService {
           clients.name,
           clients.picture,
           clients.archived,
-          IFNULL((
-            SELECT SUM(tasks.calculated_cost)
-            FROM obulus_tasks AS tasks
-            INNER JOIN obulus_projects AS projects ON projects.id = tasks.project_id
-            WHERE projects.client_id = clients.id
-              AND projects.status <> 'quoted'
-              AND invoice_id IS NULL
-              AND tasks.is_active = 1
-          ), 0) AS unbilled,
+          ${unbilledSelect} AS unbilled,
           IFNULL((
             SELECT SUM(invoices.calculated_cost)
             FROM obulus_invoices AS invoices

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   clientsApi,
   projectsApi,
@@ -333,6 +333,8 @@ export function useDashboard(year?: number) {
   return useQuery({
     queryKey: ['dashboard', year],
     queryFn: () => dashboardApi.getStats(year).then((r) => r.data),
+    // Keep showing the previous year while the next one loads (year stepper).
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -396,13 +398,25 @@ export function useClientActivities(
   clientId: number,
   page = 1,
   limit = 50,
-  types?: string[],
   options?: { enabled?: boolean },
 ) {
   return useQuery({
-    queryKey: ['activities', 'clients', clientId, page, limit, types],
-    queryFn: () => activitiesApi.forClient(clientId, page, limit, types).then((r) => r.data),
+    queryKey: ['activities', 'clients', clientId, page, limit],
+    queryFn: () => activitiesApi.forClient(clientId, page, limit).then((r) => r.data),
     enabled: !!clientId && options?.enabled !== false,
+  });
+}
+
+export function useProjectActivities(
+  projectId: number,
+  page = 1,
+  limit = 50,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: ['activities', 'projects', projectId, page, limit],
+    queryFn: () => activitiesApi.forProject(projectId, page, limit).then((r) => r.data),
+    enabled: !!projectId && options?.enabled !== false,
   });
 }
 

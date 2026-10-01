@@ -3,17 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
 import { ActivityLoggerService } from './activity-logger.service';
-import {
-  Activity,
-  Client,
-  Invoice,
-  Project,
-  Session,
-  Task,
-} from '../../database/entities';
+import { Activity, Client, Project } from '../../database/entities';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Activity, Client, Project, Invoice, Task, Session])],
+  imports: [TypeOrmModule.forFeature([Activity, Client, Project])],
   controllers: [ActivitiesController],
   providers: [ActivitiesService, ActivityLoggerService],
   exports: [ActivityLoggerService],

@@ -17,7 +17,7 @@ import {
   useProject, useUpdateProject, useTasks, useCreateTask, useUpdateTask,
   useDeleteTask, useReorderTasks, useSessions, useCreateSession,
   useUpdateSession, useDeleteSession, useCreateInvoice, useClientInvoices,
-  useUploadProjectPicture, useNextInvoiceNumber,
+  useUploadProjectPicture, useNextInvoiceNumber, useProjectActivities,
 } from '../../hooks/useApi';
 import { getTaskDate } from '../../components/tasks/taskCalculations';
 import EntityAvatar from '../../components/EntityAvatar';
@@ -26,10 +26,11 @@ import { formatDate } from '../../utils/format';
 import { downloadBlob, safeFilename } from '../../utils/download';
 import TaskTable from '../../components/tasks/TaskTable';
 import InvoiceTable from '../../components/invoices/InvoiceTable';
+import ActivityTable from '../../components/activities/ActivityTable';
 
 const { Title, Text } = Typography;
 
-const VALID_TABS = ['tasks', 'invoices'] as const;
+const VALID_TABS = ['tasks', 'invoices', 'activities'] as const;
 type TabKey = typeof VALID_TABS[number];
 
 export default function ProjectDetailPage() {
@@ -49,6 +50,10 @@ export default function ProjectDetailPage() {
     25,
     { enabled: isInvoicesTab && !!project?.clientId, projectId },
   );
+
+  const isActivitiesTab = activeTab === 'activities';
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const activities = useProjectActivities(projectId, activitiesPage, 50, { enabled: isActivitiesTab });
 
   const [taskDrawer, setTaskDrawer] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -249,6 +254,22 @@ export default function ProjectDetailPage() {
           columns={['number', 'sentAt', 'dueDate', 'status', 'amount']}
           loading={clientInvoices.isLoading}
           pagination={{ pageSize: 25, hideOnSinglePage: true, total: projectInvoicesTotal, onChange: setInvoicesPage }}
+        />
+      ),
+    },
+    {
+      key: 'activities',
+      label: `Aktivitäten${activities.data?.total ? ` (${activities.data.total})` : ''}`,
+      children: !activities.isLoading && (activities.data?.total ?? 0) === 0 ? (
+        <Empty description="Keine Aktivitäten" />
+      ) : (
+        <ActivityTable
+          activities={activities.data?.data || []}
+          loading={activities.isLoading}
+          pageSize={50}
+          total={activities.data?.total ?? 0}
+          page={activitiesPage}
+          onPageChange={setActivitiesPage}
         />
       ),
     },

@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Col, Empty, Row, Select, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import { Button, Card, Col, Empty, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useDashboard } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 import EntityAvatar from '../../components/EntityAvatar';
 
 const { Title } = Typography;
 
+const FIRST_YEAR = 2016;
 const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: currentYear - 2016 + 1 }, (_, i) => ({
-  value: 2016 + i,
-  label: String(2016 + i),
-})).reverse();
 
 export default function DashboardPage() {
   const [year, setYear] = useState(currentYear);
@@ -23,6 +21,8 @@ export default function DashboardPage() {
   }
 
   const stats = dashboard.data;
+  // Unbilled work can only be invoiced from now on, so it only counts for the current year.
+  const showUnbilled = year === currentYear;
 
   const clientColumns = [
     {
@@ -31,7 +31,9 @@ export default function DashboardPage() {
         <Space><EntityAvatar name={name} picture={r.clientPicture} size={24} />{name}</Space>
       ),
     },
-    { title: 'Nicht verrechnet', dataIndex: 'unbilled', key: 'unbilled', align: 'right' as const, render: (v: number) => formatCurrency(v) },
+    ...(showUnbilled
+      ? [{ title: 'Nicht verrechnet', dataIndex: 'unbilled', key: 'unbilled', align: 'right' as const, render: (v: number) => formatCurrency(v) }]
+      : []),
     { title: 'Verrechnet', dataIndex: 'billed', key: 'billed', align: 'right' as const, render: (v: number) => formatCurrency(v) },
     { title: 'Bezahlt', dataIndex: 'paid', key: 'paid', align: 'right' as const, render: (v: number) => formatCurrency(v) },
     { title: 'Offen', dataIndex: 'outstanding', key: 'outstanding', align: 'right' as const, render: (v: number) => formatCurrency(v) },
@@ -88,7 +90,30 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: 24, marginTop: 0 }}>Dashboard</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>Dashboard</Title>
+        <Space.Compact>
+          <Button
+            icon={<LeftOutlined />}
+            aria-label="Vorheriges Jahr"
+            disabled={year <= FIRST_YEAR}
+            onClick={() => setYear(year - 1)}
+          />
+          <Button
+            style={{ width: 72, fontWeight: 600 }}
+            title="Zum aktuellen Jahr"
+            onClick={() => setYear(currentYear)}
+          >
+            {year}
+          </Button>
+          <Button
+            icon={<RightOutlined />}
+            aria-label="Nächstes Jahr"
+            disabled={year >= currentYear}
+            onClick={() => setYear(year + 1)}
+          />
+        </Space.Compact>
+      </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
@@ -171,10 +196,7 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24}>
-          <Card
-            title="Kunden-Übersicht"
-            extra={<Select value={year} onChange={setYear} options={yearOptions} style={{ width: 100 }} size="small" />}
-          >
+          <Card title={`Kunden-Übersicht ${year}`}>
             {clients.length === 0 ? (
               <Empty description="Keine Daten vorhanden"/>
             ) : (
@@ -192,11 +214,15 @@ export default function DashboardPage() {
                   <Table.Summary fixed>
                     <Table.Summary.Row>
                       <Table.Summary.Cell index={0}><strong>Gesamt</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(totals.unbilled)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={2} align="right"><strong>{formatCurrency(totals.billed)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={3} align="right"><strong>{formatCurrency(totals.paid)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={4} align="right"><strong>{formatCurrency(totals.outstanding)}</strong></Table.Summary.Cell>
-                      <Table.Summary.Cell index={5} align="right"><strong>{formatCurrency(totals.total)}</strong></Table.Summary.Cell>
+                      {[
+                        ...(showUnbilled ? [totals.unbilled] : []),
+                        totals.billed,
+                        totals.paid,
+                        totals.outstanding,
+                        totals.total,
+                      ].map((v, i) => (
+                        <Table.Summary.Cell key={i} index={i + 1} align="right"><strong>{formatCurrency(v)}</strong></Table.Summary.Cell>
+                      ))}
                     </Table.Summary.Row>
                   </Table.Summary>
                 )}
