@@ -8,6 +8,7 @@ import {
   expensesApi,
   dashboardApi,
   bookamatApi,
+  reconcileApi,
   searchApi,
   reportsApi,
   activitiesApi,
@@ -383,6 +384,58 @@ export function useSyncBookamatYear() {
     },
   });
 }
+
+// Monatsabgleich
+export function useReconcileYear(year: number) {
+  return useQuery({
+    queryKey: ['reconcile', year],
+    queryFn: () => reconcileApi.getYear(year).then((r) => r.data),
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+}
+
+export function useReconcileMonth(year: number, month: number, enabled = true) {
+  return useQuery({
+    queryKey: ['reconcile', year, month],
+    queryFn: () => reconcileApi.getMonth(year, month).then((r) => r.data),
+    placeholderData: keepPreviousData,
+    retry: false,
+    enabled,
+  });
+}
+
+export function useUnmatchedBookings(year: number, month: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['reconcile', year, month, 'unmatched'],
+    queryFn: () => reconcileApi.unmatchedBookings(year, month).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Every reconcile mutation changes counts and matches; Bookamat data too after a transfer. */
+function useReconcileMutation<T>(fn: (arg: T) => Promise<any>, alsoBookamat = false) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (arg: T) => fn(arg).then((r) => r.data),
+    onSuccess: (data: any) => {
+      if (data?.dryRun) return;
+      qc.invalidateQueries({ queryKey: ['reconcile'] });
+      if (alsoBookamat) {
+        qc.invalidateQueries({ queryKey: ['bookamat'] });
+        qc.invalidateQueries({ queryKey: ['invoices'] });
+      }
+    },
+  });
+}
+
+export const useTransferBooking = () => useReconcileMutation((data: Record<string, unknown>) => reconcileApi.transfer(data), true);
+export const useLinkBooking = () =>
+  useReconcileMutation(({ umsatzId, bookamatId }: { umsatzId: string; bookamatId: number }) => reconcileApi.link(umsatzId, bookamatId));
+export const useIgnoreMovement = () =>
+  useReconcileMutation(({ umsatzId, ignored }: { umsatzId: string; ignored: boolean }) => reconcileApi.ignore(umsatzId, ignored));
+export const useResetDecision = () => useReconcileMutation((umsatzId: string) => reconcileApi.reset(umsatzId));
+export const useRefreshReconcile = () => useReconcileMutation(() => reconcileApi.refresh());
 
 // Search
 export function useSearch(query: string) {

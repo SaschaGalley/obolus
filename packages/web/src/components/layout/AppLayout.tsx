@@ -4,7 +4,7 @@ import { Layout, Menu, Input, Dropdown, Avatar, Drawer, Button, Grid } from 'ant
 import {
   DashboardOutlined, TeamOutlined, ProjectOutlined, FileTextOutlined,
   WalletOutlined, BarChartOutlined, LogoutOutlined, UserOutlined,
-  SearchOutlined, MenuOutlined, BankOutlined,
+  SearchOutlined, MenuOutlined, BankOutlined, AuditOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -20,6 +20,7 @@ const menuItems = [
   { key: '/invoices', icon: <FileTextOutlined />, label: 'Rechnungen' },
   { key: '/expenses', icon: <WalletOutlined />, label: 'Ausgaben' },
   { key: '/accounting', icon: <BankOutlined />, label: 'Buchhaltung' },
+  { key: '/reconcile', icon: <AuditOutlined />, label: 'Abgleich' },
   { key: '/reports', icon: <BarChartOutlined />, label: 'Reports' },
 ];
 

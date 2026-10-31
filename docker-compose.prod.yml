@@ -15,6 +15,13 @@ services:
       BOOKAMAT_USER: ${BOOKAMAT_USER:-}
       BOOKAMAT_API_KEY: ${BOOKAMAT_API_KEY:-}
       BOOKAMAT_STARTING_YEAR: ${BOOKAMAT_STARTING_YEAR:-2015}
+      # Bookamat-Name des Zahlungskontos, das dem Geschäftskonto entspricht.
+      # Leer = automatisch (das Konto, über das die meisten zugeordneten Buchungen liefen).
+      BOOKAMAT_BANKACCOUNT: ${BOOKAMAT_BANKACCOUNT:-}
+      # Monatsabgleich: Umsätze des Geschäftskontos aus Umsatz
+      # (GET /integrations/obolus/transactions). Der Key muss dort OBOLUS_API_KEY sein.
+      UMSATZ_API_URL: ${UMSATZ_API_URL:-}
+      UMSATZ_API_KEY: ${UMSATZ_API_KEY:-}
     volumes:
       - api_uploads:/app/packages/api/uploads
     healthcheck:
