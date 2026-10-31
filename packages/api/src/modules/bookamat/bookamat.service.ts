@@ -2,8 +2,12 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Booking, YearSettings } from '../../database/entities';
-import { BookamatClient, BookamatBooking } from './bookamat.client';
+import {
+  Booking, BookingAmountLine, YearSettings, BookamatAccount, BookamatAccountKind, BookamatAccountData,
+} from '../../database/entities';
+import {
+  BookamatClient, BookamatBooking, BookamatPreference, BookamatPreferenceKind,
+} from './bookamat.client';
 
 /**
  * Cost-account name → classification flags.
@@ -16,6 +20,20 @@ const TYPE_EST = new Set(['Einkommensteuer']);
 const TYPE_UST = new Set(['Umsatzsteuer laufendes Jahr', 'Umsatzsteuer Vorjahr']);
 const TYPE_SVS = new Set(['Sozialversicherung']);
 const TYPE_PRIVATE = new Set(['Privateinlagen (allgemein)', 'Privatentnahmen (allgemein)']);
+
+/** Which `/preferences/*` list feeds which account kind. */
+const PREFERENCE_KINDS: [BookamatPreferenceKind, BookamatAccountKind][] = [
+  ['costaccounts', 'cost'],
+  ['purchasetaxaccounts', 'tax'],
+  ['bankaccounts', 'bank'],
+  ['costcentres', 'costcentre'],
+];
+
+const num = (v: string | number | null | undefined): number => {
+  const n = typeof v === 'number' ? v : parseFloat(v ?? '');
+  return Number.isFinite(n) ? n : 0;
+};
+const numOrNull = (v: string | null | undefined): number | null => (v == null || v === '' ? null : num(v));
 
 export interface SyncResult {
   year: number;
@@ -33,6 +51,8 @@ export class BookamatService {
     private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(YearSettings)
     private readonly yearSettingsRepo: Repository<YearSettings>,
+    @InjectRepository(BookamatAccount)
+    private readonly accountRepo: Repository<BookamatAccount>,
     private readonly client: BookamatClient,
     private readonly config: ConfigService,
   ) {}
@@ -78,6 +98,10 @@ export class BookamatService {
       this.logger.log(`  → year unavailable on Bookamat, skipping`);
       return { year, imported: 0, skipped: true };
     }
+    // The year's accounts come along: the reconciliation resolves names to
+    // this year's IDs when it transfers a booking.
+    await this.syncAccounts(userId, year);
+
     if (bookings.length === 0) {
       this.logger.log(`  → no bookings`);
       return { year, imported: 0 };
@@ -111,24 +135,108 @@ export class BookamatService {
     const month = date.getMonth() + 1;
     const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
 
+    const lines: BookingAmountLine[] = amounts.map((a) => ({
+      group: a.group,
+      bankaccount: a.bankaccount?.name ?? null,
+      costaccount: a.costaccount?.name ?? null,
+      purchasetaxaccount: a.purchasetaxaccount?.name ?? null,
+      amount: num(a.amount),
+      amountAfterTax: num(a.amount_after_tax),
+      taxPercent: num(a.tax_percent),
+      taxValue: num(a.tax_value),
+      deductibilityTaxPercent: num(a.deductibility_tax_percent ?? '100'),
+      deductibilityAmountPercent: num(a.deductibility_amount_percent ?? '100'),
+      foreignBusinessBase: a.foreign_business_base?.vatin ?? null,
+      countryDep: a.country_dep || null,
+      countryRec: a.country_rec || null,
+    }));
+
     return {
       userId,
       bookamatId: b.id,
       title: b.title ?? '',
+      documentNumber: b.document_number ?? null,
       type,
       date: b.date,
+      dateInvoice: b.date_invoice ?? null,
+      dateDelivery: b.date_delivery ?? null,
+      dateOrder: b.date_order ?? null,
       year,
       month,
       yearMonth,
       brutto: sum('amount'),
       netto: sum('amount_after_tax'),
       tax: sum('tax_value'),
+      vatin: b.vatin || null,
+      country: b.country || null,
+      costcentre: b.costcentre?.name ?? null,
+      description: b.description || null,
+      amounts: lines,
+      attachmentCount: b.attachments?.length ?? 0,
       isIncoming,
       isPrivate: TYPE_PRIVATE.has(type),
       isEst: TYPE_EST.has(type),
       isUst: TYPE_UST.has(type),
       isSvs: TYPE_SVS.has(type),
     };
+  }
+
+  /**
+   * Replace the stored accounts of a year with Bookamat's current lists. A kind
+   * Bookamat answers 404 for is left as it was.
+   */
+  public async syncAccounts(userId: number, year: number): Promise<void> {
+    for (const [path, kind] of PREFERENCE_KINDS) {
+      const list = await this.client.fetchPreferences(year, path);
+      if (list === null) continue;
+      const rows = list.map((p) => ({
+        userId,
+        year,
+        kind,
+        bookamatId: p.id,
+        name: p.name,
+        data: this.mapPreference(kind, p),
+      }));
+      await this.accountRepo.delete({ userId, year, kind });
+      if (rows.length) await this.accountRepo.insert(rows);
+    }
+  }
+
+  /** The accounts of a year, synced on demand when none are stored yet. */
+  public async accountsForYear(userId: number, year: number): Promise<BookamatAccount[]> {
+    let accounts = await this.accountRepo.find({ where: { userId, year }, order: { name: 'ASC' } });
+    if (!accounts.length && this.client.isConfigured()) {
+      await this.syncAccounts(userId, year);
+      accounts = await this.accountRepo.find({ where: { userId, year }, order: { name: 'ASC' } });
+    }
+    return accounts;
+  }
+
+  private mapPreference(kind: BookamatAccountKind, p: BookamatPreference): BookamatAccountData {
+    switch (kind) {
+      case 'cost':
+        return {
+          group: p.group,
+          section: p.section,
+          active: p.active,
+          purchasetaxaccounts: (p.purchasetaxaccounts ?? []).map((t) => t.name),
+          deductibilityTaxPercent: numOrNull(p.deductibility_tax_percent),
+          deductibilityAmountPercent: numOrNull(p.deductibility_amount_percent),
+        };
+      case 'tax':
+        return {
+          group: p.group,
+          section: p.section,
+          active: p.active,
+          reverseCharge: !!p.reverse_charge,
+          icReport: !!p.ic_report,
+          icDelivery: !!p.ic_delivery,
+          icService: !!p.ic_service,
+          taxValues: (p.tax_values ?? []).map(num),
+        };
+      default:
+        return {};
+    }
   }
 
   private async ensureYearSettings(userId: number, year: number): Promise<void> {

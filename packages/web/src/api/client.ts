@@ -157,6 +157,19 @@ export const bookamatApi = {
     apiClient.get('/bookamat/bookings', { params }),
 };
 
+// Monatsabgleich Geschäftskonto ↔ Bookamat
+export const reconcileApi = {
+  getYear: (year: number) => apiClient.get(`/bookamat/reconcile/${year}`),
+  getMonth: (year: number, month: number) => apiClient.get(`/bookamat/reconcile/${year}/${month}`),
+  unmatchedBookings: (year: number, month: number) =>
+    apiClient.get(`/bookamat/reconcile/${year}/${month}/unmatched-bookings`),
+  transfer: (data: Record<string, unknown>) => apiClient.post('/bookamat/reconcile/transfer', data),
+  link: (umsatzId: string, bookamatId: number) => apiClient.post('/bookamat/reconcile/link', { umsatzId, bookamatId }),
+  ignore: (umsatzId: string, ignored: boolean) => apiClient.post('/bookamat/reconcile/ignore', { umsatzId, ignored }),
+  reset: (umsatzId: string) => apiClient.delete(`/bookamat/reconcile/decisions/${encodeURIComponent(umsatzId)}`),
+  refresh: () => apiClient.post('/bookamat/reconcile/refresh'),
+};
+
 // Search
 export const searchApi = {
   search: (query: string) =>
