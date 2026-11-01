@@ -48,6 +48,8 @@ interface UnmatchedBooking {
   title: string;
   date: string;
   signed: number;
+  /** Not yet covered by linked movements (a booking of several movements). */
+  rest: number;
 }
 
 const DATE_FIELDS: FieldKey[] = ['date', 'dateInvoice', 'dateDelivery'];
@@ -462,7 +464,8 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
         }}
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-          Buchungen rund um den Monat, die noch keiner Kontobewegung zugeordnet sind. Gleicher Betrag zuerst.
+          Buchungen rund um den Monat, die noch keiner Kontobewegung zugeordnet sind, und Sammelbuchungen mit
+          offenem Rest. Passender Betrag zuerst.
         </Text>
         <Select
           style={{ width: '100%' }}
@@ -472,8 +475,11 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
           value={linkTo ?? undefined}
           onChange={setLinkTo}
           options={[...((unmatched.data ?? []) as UnmatchedBooking[])]
-            .sort((a, b) => Math.abs(a.signed - tx.amount) - Math.abs(b.signed - tx.amount))
-            .map((b) => ({ value: b.bookamatId, label: `${formatDate(b.date)} · ${formatCurrency(b.signed)} · ${b.title}` }))}
+            .sort((a, b) => Math.abs(a.rest - tx.amount) - Math.abs(b.rest - tx.amount))
+            .map((b) => ({
+              value: b.bookamatId,
+              label: `${formatDate(b.date)} · ${formatCurrency(b.signed)}${b.rest !== b.signed ? ` (noch offen ${formatCurrency(b.rest)})` : ''} · ${b.title}`,
+            }))}
         />
       </Modal>
     </Card>

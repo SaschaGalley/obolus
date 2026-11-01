@@ -19,6 +19,7 @@ const VIA: Record<string, { label: string; color: string }> = {
   auto: { label: 'automatisch', color: 'default' },
   manual: { label: 'verknüpft', color: 'blue' },
   transferred: { label: 'übertragen', color: 'green' },
+  sum: { label: 'Summe', color: 'cyan' },
 };
 
 /**
@@ -185,7 +186,9 @@ export default function ReconcilePage() {
                         title: '', width: 180,
                         render: (_: unknown, e: MonthEntry) => (
                           <Space size={4}>
-                            <Tag color={VIA[e.match!.via].color}>{VIA[e.match!.via].label}</Tag>
+                            <Tag color={VIA[e.match!.via].color}>
+                              {e.match!.via === 'sum' ? `Summe aus ${e.match!.parts}` : VIA[e.match!.via].label}
+                            </Tag>
                             {e.match!.via === 'manual' && (
                               <Popconfirm title="Verknüpfung lösen?" onConfirm={() => reset.mutate(e.tx.id)}>
                                 <Button type="link" size="small">lösen</Button>

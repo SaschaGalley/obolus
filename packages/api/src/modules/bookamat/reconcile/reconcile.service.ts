@@ -163,14 +163,27 @@ export class ReconcileService {
     };
   }
 
-  /** Bookings of a month neither matched nor on another account — candidates to link a movement to by hand. */
+  /**
+   * Bookings of a month a movement can be linked to by hand: unmatched ones,
+   * and ones booked as a sum of several movements whose matched movements do
+   * not cover the amount yet (`rest`).
+   */
   async unmatchedBookings(userId: number, year: number, month: number) {
     const { from, to } = monthRange(year, month);
     const data = await this.load(userId, from, to);
-    const taken = new Set([...data.matches.values()].map((m) => m.bookamatId));
+    const covered = new Map<number, number>();
+    for (const [txId, m] of data.matches) {
+      const amount = data.txs.find((t) => t.id === txId)?.amount ?? NaN;
+      covered.set(m.bookamatId, (covered.get(m.bookamatId) ?? 0) + amount);
+    }
     return data.bookings
-      .filter((b) => !taken.has(b.bookamatId) && b.date >= addDays(from, -EDGE_DAYS) && b.date <= addDays(to, EDGE_DAYS))
-      .map((b) => ({ bookamatId: b.bookamatId, title: b.title, date: b.date, signed: b.signed }));
+      .filter((b) => b.date >= addDays(from, -EDGE_DAYS) && b.date <= addDays(to, EDGE_DAYS))
+      .map((b) => ({
+        bookamatId: b.bookamatId, title: b.title, date: b.date, signed: b.signed,
+        rest: covered.has(b.bookamatId) ? round2(b.signed - covered.get(b.bookamatId)!) : b.signed,
+      }))
+      // A sum's rest has the booking's sign; NaN (a matched movement outside the month) counts as covered.
+      .filter((b) => !covered.has(b.bookamatId) || (Math.abs(b.rest) >= 0.01 && Math.sign(b.rest) === Math.sign(b.signed)));
   }
 
   async link(userId: number, umsatzId: string, bookamatId: number) {

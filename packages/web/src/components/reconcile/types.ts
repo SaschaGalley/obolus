@@ -51,8 +51,10 @@ export interface MonthEntry {
   status: 'open' | 'done' | 'ignored';
   match: {
     bookamatId: number;
-    via: 'manual' | 'transferred' | 'auto';
+    via: 'manual' | 'transferred' | 'auto' | 'sum';
     dayDiff?: number;
+    /** `sum`: how many movements the booking is made of. */
+    parts?: number;
     booking: { bookamatId: number; title: string; date: string; documentNumber: string | null; costaccount: string | null; attachmentCount: number } | null;
   } | null;
   suggestion: Suggestion | null;

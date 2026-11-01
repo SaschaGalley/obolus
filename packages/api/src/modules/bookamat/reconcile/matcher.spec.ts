@@ -53,3 +53,38 @@ test('decisions win: linked by hand, transferred, ignored', () => {
   assert.equal(m.has('b'), false);
   assert.deepEqual(m.get('c'), { bookamatId: 3, via: 'transferred' });
 });
+
+test('two transfers of one day booked as one sum both match that booking', () => {
+  const m = matchTransactions(
+    [tx('a', '2026-05-02', -700), tx('b', '2026-05-02', -500), tx('c', '2026-05-02', -45.9)],
+    [booking(1, '2026-05-02', -1200), booking(2, '2026-05-02', -45.9)],
+    [],
+  );
+  assert.deepEqual(m.get('a'), { bookamatId: 1, via: 'sum', dayDiff: 0, parts: 2 });
+  assert.deepEqual(m.get('b'), { bookamatId: 1, via: 'sum', dayDiff: 0, parts: 2 });
+  assert.equal(m.get('c')?.via, 'auto');
+});
+
+test('sums: only one day, one sign, and only when unambiguous', () => {
+  // Different days: no sum.
+  assert.equal(matchTransactions([tx('a', '2026-05-02', -700), tx('b', '2026-05-03', -500)], [booking(1, '2026-05-02', -1200)], []).size, 0);
+  // An income and an expense never add up.
+  assert.equal(matchTransactions([tx('a', '2026-05-02', 1700), tx('b', '2026-05-02', -500)], [booking(1, '2026-05-02', 1200)], []).size, 0);
+  // Two combinations reach the same total: leave it to the user.
+  const m = matchTransactions(
+    [tx('a', '2026-05-02', -700), tx('b', '2026-05-02', -500), tx('c', '2026-05-02', -500)],
+    [booking(1, '2026-05-02', -1200)],
+    [],
+  );
+  assert.equal(m.size, 0);
+});
+
+test('a movement linked by hand is not added into a sum', () => {
+  const m = matchTransactions(
+    [tx('a', '2026-05-02', -700), tx('b', '2026-05-02', -500)],
+    [booking(1, '2026-05-02', -1200), booking(2, '2026-05-01', -999)],
+    [{ umsatzId: 'a', bookamatId: 2, ignored: false, transferredAt: null }],
+  );
+  assert.equal(m.get('a')?.via, 'manual');
+  assert.equal(m.has('b'), false);
+});
