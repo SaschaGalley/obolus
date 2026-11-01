@@ -415,10 +415,11 @@ export function useReconcileMonth(year: number, month: number, enabled = true) {
   });
 }
 
-export function useUnmatchedBookings(year: number, month: number, enabled: boolean) {
+/** `elsewhere`: paid from another Zahlungskonto, for a movement switched to obolus from a private card. */
+export function useUnmatchedBookings(year: number, month: number, enabled: boolean, elsewhere = false) {
   return useQuery({
-    queryKey: ['reconcile', year, month, 'unmatched'],
-    queryFn: () => reconcileApi.unmatchedBookings(year, month).then((r) => r.data),
+    queryKey: ['reconcile', year, month, 'unmatched', elsewhere],
+    queryFn: () => reconcileApi.unmatchedBookings(year, month, elsewhere).then((r) => r.data),
     enabled,
   });
 }

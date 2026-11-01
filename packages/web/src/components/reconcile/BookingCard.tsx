@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import SmartDatePicker from '../SmartDatePicker';
+import AccountTag from './AccountTag';
 import { useTransferBooking, useIgnoreMovement, useLinkBooking, useUnmatchedBookings } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { apiErrorText } from '../../utils/errors';
@@ -153,7 +154,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   const [preview, setPreview] = useState<TransferPreview | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkTo, setLinkTo] = useState<number | null>(null);
-  const unmatched = useUnmatchedBookings(year, month, linkOpen);
+  const unmatched = useUnmatchedBookings(year, month, linkOpen, !tx.businessAccount);
 
   const initialValues = useMemo(() => {
     const v: Record<string, unknown> = {};
@@ -335,6 +336,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
           <Text type="secondary" ellipsis={{ tooltip: tx.description }} style={{ maxWidth: 380 }}>{tx.description}</Text>
           {tx.merchant && <Tag>{tx.merchant}</Tag>}
           {tx.category && <Tag color="purple">{tx.category}</Tag>}
+          {!tx.businessAccount && <AccountTag account={tx.account} />}
         </Space>
       )}
       extra={basisTag}
@@ -493,7 +495,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
           Buchungen rund um den Monat, die noch keiner Kontobewegung zugeordnet sind, und Sammelbuchungen mit
-          offenem Rest. Passender Betrag zuerst.
+          offenem Rest{tx.businessAccount ? '' : ', bezahlt nicht über das Geschäftskonto'}. Passender Betrag zuerst.
         </Text>
         <Select
           style={{ width: '100%' }}

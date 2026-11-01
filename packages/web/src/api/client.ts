@@ -161,8 +161,8 @@ export const bookamatApi = {
 export const reconcileApi = {
   getYear: (year: number) => apiClient.get(`/bookamat/reconcile/${year}`),
   getMonth: (year: number, month: number) => apiClient.get(`/bookamat/reconcile/${year}/${month}`),
-  unmatchedBookings: (year: number, month: number) =>
-    apiClient.get(`/bookamat/reconcile/${year}/${month}/unmatched-bookings`),
+  unmatchedBookings: (year: number, month: number, elsewhere = false) =>
+    apiClient.get(`/bookamat/reconcile/${year}/${month}/unmatched-bookings`, { params: elsewhere ? { elsewhere: true } : {} }),
   transfer: (data: Record<string, unknown>) => apiClient.post('/bookamat/reconcile/transfer', data),
   link: (umsatzId: string, bookamatId: number) => apiClient.post('/bookamat/reconcile/link', { umsatzId, bookamatId }),
   ignore: (umsatzId: string, ignored: boolean) => apiClient.post('/bookamat/reconcile/ignore', { umsatzId, ignored }),

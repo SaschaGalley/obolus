@@ -7,7 +7,7 @@ import type { BookingAmountLine } from '../../../database/entities/booking.entit
 // Invented data only: "Beispiel GmbH" stands for a recurring client, "CloudTool" for a software vendor.
 
 const tx = (over: Partial<BankTx>): BankTx => ({
-  id: 'tx', day: '2026-10-03', amount: -10, currency: 'EUR', description: '', type: null,
+  id: 'tx', day: '2026-10-03', account: 'Geschäftskonto', businessAccount: true, amount: -10, currency: 'EUR', description: '', type: null,
   merchant: null, merchantId: null, category: null, categoryKind: null, ...over,
 });
 
@@ -172,4 +172,20 @@ test('rows synced before the dates were stored do not teach an empty invoice dat
   const s = suggest(tx({ id: 'now', day: '2026-10-14', merchantId: 'cloudtool' }), ctx({ pairs }));
   assert.equal(s.fields.dateInvoice.value, '2026-10-14');
   assert.equal(s.fields.dateInvoice.source, 'wie bisher: = Zahlungsdatum');
+});
+
+test('a business expense paid by private card: Zahlungskonto as that card was booked before, never the business one', () => {
+  const card = (over: Partial<BankTx>) => tx({ account: 'Kreditkarte', businessAccount: false, merchantId: 'cloudtool', merchant: 'CloudTool', ...over });
+  const paidBy = (bankaccount: string, id: number) => booking({ bookamatId: id, title: 'CloudTool', amounts: [line({ bankaccount })] });
+  const earlier = { tx: card({ id: 'k1', day: '2026-08-03' }), booking: paidBy('Privat', 1) };
+  const s = suggest(card({}), ctx({ pairs: [earlier] }));
+  assert.equal(s.fields.bankaccount.value, 'Privat');
+  assert.equal(s.fields.bankaccount.source, 'wie bisher bei „Kreditkarte“');
+
+  // Only ever paid from the business account so far: leave the choice to the user.
+  const business = { tx: tx({ id: 'b1', merchantId: 'cloudtool', merchant: 'CloudTool' }), booking: paidBy('Bank', 2) };
+  const fresh = suggest(card({}), ctx({ pairs: [business] }));
+  assert.equal(fresh.fields.bankaccount.value, null);
+  assert.equal(fresh.fields.bankaccount.estimated, true);
+  assert.equal(fresh.fields.costaccount.value, 'Software');
 });

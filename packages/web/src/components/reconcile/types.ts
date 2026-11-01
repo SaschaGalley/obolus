@@ -3,6 +3,10 @@
 export interface BankTx {
   id: string;
   day: string;
+  /** Umsatz' name of the account it is on. */
+  account: string;
+  /** False when it is on another account (a private card) and was switched to obolus in Umsatz. */
+  businessAccount: boolean;
   amount: number;
   currency: string;
   description: string;

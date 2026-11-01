@@ -29,7 +29,8 @@ export const daysBetween = (a: string, b: string): number =>
 export const sameAmount = (a: number, b: number): boolean => Math.abs(a - b) < 0.005;
 
 /**
- * Pair bank movements with Bookamat bookings.
+ * Pair bank movements with Bookamat bookings; `fits` says which bookings a
+ * movement may pair with at all (paid from its account).
  *
  * Stored decisions win: a movement linked or transferred keeps its booking, an
  * ignored one gets none. The rest pair automatically when the signed amount is
@@ -44,6 +45,7 @@ export function matchTransactions(
   bookings: HistBooking[],
   decisions: Decision[],
   maxDays = MAX_DAY_DIFF,
+  fits: (tx: BankTx, booking: HistBooking) => boolean = () => true,
 ): Map<string, Match> {
   const matches = new Map<string, Match>();
   const taken = new Set<number>();
@@ -60,7 +62,7 @@ export function matchTransactions(
   for (const tx of txs) {
     if (decided.has(tx.id)) continue;
     for (const booking of bookings) {
-      if (taken.has(booking.bookamatId) || !sameAmount(tx.amount, booking.signed)) continue;
+      if (taken.has(booking.bookamatId) || !sameAmount(tx.amount, booking.signed) || !fits(tx, booking)) continue;
       const dayDiff = daysBetween(tx.day, booking.date);
       if (dayDiff <= maxDays) candidates.push({ tx, booking, dayDiff });
     }
@@ -74,7 +76,7 @@ export function matchTransactions(
   }
 
   const open = txs.filter((t) => !decided.has(t.id) && !matches.has(t.id));
-  for (const { parts, booking, dayDiff } of matchSums(open, bookings.filter((b) => !taken.has(b.bookamatId)), maxDays)) {
+  for (const { parts, booking, dayDiff } of matchSums(open, bookings.filter((b) => !taken.has(b.bookamatId)), maxDays, fits)) {
     for (const t of parts) matches.set(t.id, { bookamatId: booking.bookamatId, via: 'sum', dayDiff, parts: parts.length });
   }
   return matches;
@@ -82,23 +84,23 @@ export function matchTransactions(
 
 /**
  * Several movements of one day booked as one sum (two standing orders, one
- * Privatentnahme): movements of the same day and sign whose total equals a
+ * Privatentnahme): movements of the same day, sign and account whose total equals a
  * booking to the cent. Only unambiguous combinations count — a booking that
  * more than one combination adds up to, or a movement that is part of more
  * than one, stays open.
  */
-function matchSums(txs: BankTx[], bookings: HistBooking[], maxDays: number) {
+function matchSums(txs: BankTx[], bookings: HistBooking[], maxDays: number, fits: (tx: BankTx, booking: HistBooking) => boolean) {
   const cents = (n: number) => Math.round(n * 100);
   const groups = new Map<string, BankTx[]>();
   for (const t of txs) {
-    const key = `${t.day}${t.amount < 0 ? '-' : '+'}`;
+    const key = `${t.day}${t.amount < 0 ? '-' : '+'}${t.account}`;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
 
   const found: { parts: BankTx[]; booking: HistBooking; dayDiff: number }[] = [];
   for (const group of groups.values()) {
     if (group.length < 2 || group.length > MAX_DAY_GROUP) continue;
-    const near = bookings.filter((b) => daysBetween(group[0].day, b.date) <= maxDays);
+    const near = bookings.filter((b) => daysBetween(group[0].day, b.date) <= maxDays && fits(group[0], b));
     if (!near.length) continue;
     for (const parts of subsets(group, 2, MAX_PARTS)) {
       const total = parts.reduce((s, t) => s + cents(t.amount), 0);

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { User } from '../../../database/entities';
@@ -33,8 +33,9 @@ export class ReconcileController {
     @CurrentUser() user: User,
     @Param('year', ParseIntPipe) year: number,
     @Param('month', ParseIntPipe) month: number,
+    @Query('elsewhere') elsewhere?: string,
   ) {
-    return this.service.unmatchedBookings(user.id, year, month);
+    return this.service.unmatchedBookings(user.id, year, month, elsewhere === 'true');
   }
 
   @Post('transfer')

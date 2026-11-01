@@ -356,9 +356,7 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
     date: { value: tx.day, source: 'Kontoauszug' },
     dateInvoice,
     dateDelivery,
-    bankaccount: ctx.bankaccount
-      ? { value: ctx.bankaccount, source: 'Geschäftskonto' }
-      : { value: line?.bankaccount ?? null, source: line ? 'wie zuletzt' : 'bitte wählen', estimated: !line },
+    bankaccount: bankaccountFor(tx, line, ctx),
     costaccount: { value: line?.costaccount ?? null, source: fromHistory, estimated: !line || similar.basis === 'category' },
     purchasetaxaccount: { value: line?.purchasetaxaccount ?? null, source: fromHistory, estimated: !line || similar.basis === 'category' },
     amount: { value: Math.abs(tx.amount), source: 'Kontoauszug' },
@@ -391,6 +389,27 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
     fields,
     warnings,
   };
+}
+
+/**
+ * The Zahlungskonto: for the business account its own. A movement switched to
+ * obolus from another account (a private card) gets the one earlier movements
+ * of that account were booked with, else the last similar booking's — unless
+ * that was the business account's.
+ */
+function bankaccountFor(tx: BankTx, line: BookingAmountLine | null, ctx: SuggestContext): Field {
+  if (tx.businessAccount) {
+    return ctx.bankaccount
+      ? { value: ctx.bankaccount, source: 'Geschäftskonto' }
+      : { value: line?.bankaccount ?? null, source: line ? 'wie zuletzt' : 'bitte wählen', estimated: !line };
+  }
+  const before = majority(ctx.pairs
+    .filter((p) => !p.tx.businessAccount && p.tx.account === tx.account && p.tx.id !== tx.id)
+    .map((p) => p.booking.amounts?.[0]?.bankaccount)
+    .filter((b): b is string => !!b && b !== ctx.bankaccount));
+  if (before) return { value: before, source: `wie bisher bei „${tx.account}“` };
+  if (line?.bankaccount && line.bankaccount !== ctx.bankaccount) return { value: line.bankaccount, source: 'wie zuletzt' };
+  return { value: null, source: `bezahlt über „${tx.account}“, bitte wählen`, estimated: true };
 }
 
 /** What Bookamat would reject or what is likely wrong, checked against the year's activated accounts. */

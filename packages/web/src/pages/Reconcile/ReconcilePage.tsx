@@ -11,6 +11,7 @@ import {
 import { formatCurrency, formatDate } from '../../utils/format';
 import { apiErrorText } from '../../utils/errors';
 import BookingCard from '../../components/reconcile/BookingCard';
+import AccountTag from '../../components/reconcile/AccountTag';
 import type { MonthCounts, MonthEntry, MonthView } from '../../components/reconcile/types';
 
 const { Title, Text } = Typography;
@@ -68,7 +69,10 @@ export default function ReconcilePage() {
       title: 'Betrag', dataIndex: ['tx', 'amount'], width: 130, align: 'right' as const,
       render: (a: number) => <span style={{ color: a > 0 ? '#16a34a' : undefined }}>{formatCurrency(a)}</span>,
     },
-    { title: 'Kontobewegung', dataIndex: ['tx', 'description'], ellipsis: true },
+    {
+      title: 'Kontobewegung', dataIndex: ['tx', 'description'], ellipsis: true,
+      render: (d: string, e: MonthEntry) => <>{!e.tx.businessAccount && <AccountTag account={e.tx.account} />}{d}</>,
+    },
   ];
 
   return (
@@ -76,7 +80,7 @@ export default function ReconcilePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>Abgleich</Title>
-          <Text type="secondary">Geschäftskonto (Umsatz) ↔ Bookamat: was fehlt noch, und wie wird es gebucht?</Text>
+          <Text type="secondary">Geschäftskonto (Umsatz, dazu dort markierte Kartenzahlungen) ↔ Bookamat: was fehlt noch, und wie wird es gebucht?</Text>
         </div>
         <Space>
           <Button icon={<LeftOutlined />} onClick={() => go(year - 1)} />

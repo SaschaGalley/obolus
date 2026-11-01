@@ -1,9 +1,17 @@
 import type { BookingAmountLine } from '../../../database/entities/booking.entity';
 
-/** A movement on the business account, as Umsatz sends it (`/integrations/obolus/transactions`). */
+/**
+ * A movement on the business account, or on another account where it was
+ * switched to obolus in Umsatz (a business expense paid privately), as Umsatz
+ * sends it (`/integrations/obolus/transactions`).
+ */
 export interface BankTx {
   id: string;
   day: string;                 // YYYY-MM-DD
+  /** Umsatz' name of the account it is on. */
+  account: string;
+  /** False when it is on another account and was switched to obolus. */
+  businessAccount: boolean;
   amount: number;              // signed: + in, − out
   currency: string;
   description: string;

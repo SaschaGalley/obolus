@@ -7,7 +7,7 @@ import { PdfService } from '../../../pdf/pdf.service';
 import { InvoicesService } from '../../invoices/invoices.service';
 import { BookamatClient, BookamatBookingCreate } from '../bookamat.client';
 import { BookamatService } from '../bookamat.service';
-import { Match, matchTransactions } from './matcher';
+import { Match, MAX_DAY_DIFF, matchTransactions } from './matcher';
 import { needsInvoiceDate, normalizeVatin, suggest, SuggestContext, YearAccounts } from './suggest';
 import { UmsatzClient } from './umsatz.client';
 import { BankTx, Decision, HistBooking, InvoiceRef, Suggestion } from './types';
@@ -44,7 +44,10 @@ export interface MonthCounts {
 
 interface Loaded {
   txs: BankTx[];
+  /** Paid from the business account (or unknown): what its movements pair with. */
   bookings: HistBooking[];
+  /** Paid from another Zahlungskonto (or unknown): what movements switched to obolus from a private card pair with. */
+  elsewhere: HistBooking[];
   byId: Map<number, HistBooking>;
   matches: Map<string, Match>;
   /** Movements marked as needing no booking. */
@@ -62,7 +65,8 @@ const monthRange = (year: number, month: number) => ({
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * Monatsabgleich: which movements on the business account Bookamat still
+ * Monatsabgleich: which movements on the business account — and business
+ * expenses paid privately, switched to obolus in Umsatz — Bookamat still
  * lacks, and the booking form for each, filled in from obolus' invoices and
  * from how earlier payments were booked. The movements are read from Umsatz on
  * every request and never stored; only decisions (linked, ignored,
@@ -123,9 +127,11 @@ export class ReconcileService {
       bankaccount: data.bankaccount,
       accounts: accounts.length ? yearAccounts : undefined,
     };
+    // A business expense paid privately may resemble any booking, whatever it was paid from.
+    const privateCtx: SuggestContext = { ...ctx, bookings: [...data.byId.values()] };
 
     const entries = this.entries(data, from, to).map((e) =>
-      e.status === 'open' ? { ...e, suggestion: suggest(e.tx, ctx) } : e,
+      e.status === 'open' ? { ...e, suggestion: suggest(e.tx, e.tx.businessAccount ? ctx : privateCtx) } : e,
     );
     const bookamatOnly = this.bookamatOnly(data, from, to).map((b) => ({
       bookamatId: b.bookamatId,
@@ -166,9 +172,10 @@ export class ReconcileService {
   /**
    * Bookings of a month a movement can be linked to by hand: unmatched ones,
    * and ones booked as a sum of several movements whose matched movements do
-   * not cover the amount yet (`rest`).
+   * not cover the amount yet (`rest`). Paid from the business account, or with
+   * `elsewhere` from another Zahlungskonto, for a movement switched to obolus.
    */
-  async unmatchedBookings(userId: number, year: number, month: number) {
+  async unmatchedBookings(userId: number, year: number, month: number, elsewhere = false) {
     const { from, to } = monthRange(year, month);
     const data = await this.load(userId, from, to);
     const covered = new Map<number, number>();
@@ -176,7 +183,7 @@ export class ReconcileService {
       const amount = data.txs.find((t) => t.id === txId)?.amount ?? NaN;
       covered.set(m.bookamatId, (covered.get(m.bookamatId) ?? 0) + amount);
     }
-    return data.bookings
+    return (elsewhere ? data.elsewhere : data.bookings)
       .filter((b) => b.date >= addDays(from, -EDGE_DAYS) && b.date <= addDays(to, EDGE_DAYS))
       .map((b) => ({
         bookamatId: b.bookamatId, title: b.title, date: b.date, signed: b.signed,
@@ -359,10 +366,11 @@ export class ReconcileService {
     }));
 
     // Which Bookamat Zahlungskonto is the business account: configured, or the
-    // one most of the bookings matching these movements were paid from.
+    // one most of the bookings matching its movements were paid from.
     let bankaccount = this.config.get<string>('BOOKAMAT_BANKACCOUNT') || null;
     if (!bankaccount) {
-      const first = matchTransactions(txs, all, decisions);
+      const privateIds = new Set(txs.filter((t) => !t.businessAccount).map((t) => t.id));
+      const first = matchTransactions(txs.filter((t) => t.businessAccount), all, decisions.filter((d) => !privateIds.has(d.umsatzId)));
       const counts = new Map<string, number>();
       for (const m of first.values()) {
         const name = all.find((b) => b.bookamatId === m.bookamatId)?.amounts?.[0]?.bankaccount;
@@ -370,9 +378,13 @@ export class ReconcileService {
       }
       bankaccount = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     }
-    // Bookings paid from another account (Kassa, Kreditkarte) never show on this one.
-    const bookings = all.filter((b) => !bankaccount || !b.amounts?.length || b.amounts.some((l) => l.bankaccount === bankaccount));
-    const matches = matchTransactions(txs, bookings, decisions);
+    // Bookings paid from another account (Kassa, Kreditkarte) never show on the business
+    // account; a movement switched to obolus from a private card pairs only with those.
+    const paidHere = (b: HistBooking) => !bankaccount || !b.amounts?.length || b.amounts.some((l) => l.bankaccount === bankaccount);
+    const paidElsewhere = (b: HistBooking) => !bankaccount || !b.amounts?.length || b.amounts.some((l) => l.bankaccount !== bankaccount);
+    const bookings = all.filter(paidHere);
+    const elsewhere = all.filter(paidElsewhere);
+    const matches = matchTransactions(txs, all, decisions, MAX_DAY_DIFF, (t, b) => (t.businessAccount ? paidHere(b) : paidElsewhere(b)));
 
     const invoices: InvoiceRef[] = invoiceRows.map((i) => ({
       id: i.id,
@@ -389,6 +401,7 @@ export class ReconcileService {
     return {
       txs,
       bookings,
+      elsewhere,
       byId: new Map(all.map((b) => [b.bookamatId, b])),
       matches,
       ignored: new Set(decisions.filter((d) => d.ignored).map((d) => d.umsatzId)),

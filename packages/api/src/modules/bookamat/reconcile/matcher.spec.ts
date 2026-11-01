@@ -5,7 +5,7 @@ import { BankTx, HistBooking } from './types';
 
 // Invented data only.
 const tx = (id: string, day: string, amount: number): BankTx => ({
-  id, day, amount, currency: 'EUR', description: `Text ${id}`, type: null,
+  id, day, account: 'Geschäftskonto', businessAccount: true, amount, currency: 'EUR', description: `Text ${id}`, type: null,
   merchant: null, merchantId: null, category: null, categoryKind: null,
 });
 const booking = (bookamatId: number, date: string, signed: number): HistBooking => ({
@@ -87,4 +87,22 @@ test('a movement linked by hand is not added into a sum', () => {
   );
   assert.equal(m.get('a')?.via, 'manual');
   assert.equal(m.has('b'), false);
+});
+
+test('a movement switched over from a private card pairs only with bookings paid from elsewhere', () => {
+  const card = (id: string, day: string, amount: number): BankTx => ({ ...tx(id, day, amount), account: 'Kreditkarte', businessAccount: false });
+  // Booking 1 went over the business account, booking 2 over another Zahlungskonto.
+  const fits = (t: BankTx, b: HistBooking) => t.businessAccount === (b.bookamatId === 1);
+  const m = matchTransactions(
+    [tx('a', '2026-05-04', -50), card('k', '2026-05-02', -50)],
+    [booking(1, '2026-05-02', -50), booking(2, '2026-05-04', -50)],
+    [],
+    undefined,
+    fits,
+  );
+  assert.equal(m.get('a')?.bookamatId, 1);
+  assert.equal(m.get('k')?.bookamatId, 2);
+  // Movements of different accounts never add up to one booking.
+  const sums = matchTransactions([tx('a', '2026-05-02', -700), card('k', '2026-05-02', -500)], [booking(2, '2026-05-02', -1200)], []);
+  assert.equal(sums.size, 0);
 });

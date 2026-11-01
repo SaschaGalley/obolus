@@ -10,7 +10,7 @@ const CACHE_MS = 5 * 60_000;
  * Reads the business account's movements from Umsatz, the owner's finance
  * app, the way stock-cli reads its trades: `GET /integrations/obolus/transactions`
  * with the shared key in `x-api-key`. Umsatz only hands out the accounts named
- * in its `OBOLUS_ACCOUNT_IDS`.
+ * in its `OBOLUS_ACCOUNT_IDS`, and movements on others switched to obolus there.
  *
  * Nothing of it is stored or logged here: the movements carry bank texts.
  */
@@ -52,7 +52,10 @@ export class UmsatzClient {
         headers: { 'x-api-key': this.config.get<string>('UMSATZ_API_KEY') },
         timeout: 20_000,
       });
-      return (data.transactions ?? []).map((t) => ({ ...t, amount: Number(t.amount) }));
+      // An Umsatz from before the switch sends neither field: only the business account then.
+      return (data.transactions ?? []).map((t) => ({
+        ...t, amount: Number(t.amount), account: t.account ?? '', businessAccount: t.businessAccount ?? true,
+      }));
     } catch (err) {
       throw new ServiceUnavailableException(this.describe(err, base));
     }
