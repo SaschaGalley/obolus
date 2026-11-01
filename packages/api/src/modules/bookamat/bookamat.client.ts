@@ -54,6 +54,19 @@ export interface BookamatPreference {
   ic_delivery?: boolean;
   ic_service?: boolean;
   tax_values?: string[];
+  /** tax: UVA-Kennzahlen the account feeds, e.g. ["000","022","029"] (rate-specific ones by the line's rate). */
+  index_purchasetax?: string[];
+  /** cost: Kennzahlen of the income tax return (E1a). */
+  index_incometax?: string[];
+}
+
+/** Grundeinstellungen of a year (`/user/settings/`). */
+export interface BookamatSettings {
+  id: number;
+  purchasetax?: boolean;
+  purchasetax_range?: string;     // "1" = monatlich, "2" = vierteljährlich
+  accounting_method?: string;     // "cash" = Ist, "accrual" = Soll
+  ic_report_range?: string;       // "1" = monatlich, "2" = vierteljährlich
 }
 
 export type BookamatPreferenceKind = 'costaccounts' | 'purchasetaxaccounts' | 'bankaccounts' | 'costcentres';
@@ -136,6 +149,12 @@ export class BookamatClient {
   /** The activated accounts of one kind in a year; `null` when the year is not on Bookamat. */
   public fetchPreferences(year: number, kind: BookamatPreferenceKind): Promise<BookamatPreference[] | null> {
     return this.fetchListOrNull<BookamatPreference>(year, `${this.baseUrl}/${year}/preferences/${kind}/`);
+  }
+
+  /** The year's Grundeinstellungen; `null` when the year is not on Bookamat. */
+  public async fetchSettings(year: number): Promise<BookamatSettings | null> {
+    const list = await this.fetchListOrNull<BookamatSettings>(year, `${this.baseUrl}/${year}/user/settings/`);
+    return list?.[0] ?? null;
   }
 
   /** Create a booking in the year of its date. Returns the booking as Bookamat stored it. */

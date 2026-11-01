@@ -1,4 +1,8 @@
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+
+export type VatPeriod = 'month' | 'quarter';
+/** `cash` = Ist-Besteuerung, `accrual` = Soll-Besteuerung (Bookamat's terms). */
+export type VatMethod = 'cash' | 'accrual';
 import { User } from './user.entity';
 
 /**
@@ -104,6 +108,16 @@ export class YearSettings {
 
   @Column({ name: 'est_limit_6', type: 'int', default: 1000000 })
   estLimit6: number;
+
+  /** UVA-Zeitraum, Besteuerungsart und ZM-Zeitraum; from Bookamat's settings, NULL = like the year before. */
+  @Column({ name: 'vat_period', type: 'varchar', length: 10, nullable: true })
+  vatPeriod: VatPeriod | null;
+
+  @Column({ name: 'vat_method', type: 'varchar', length: 10, nullable: true })
+  vatMethod: VatMethod | null;
+
+  @Column({ name: 'zm_period', type: 'varchar', length: 10, nullable: true })
+  zmPeriod: VatPeriod | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })

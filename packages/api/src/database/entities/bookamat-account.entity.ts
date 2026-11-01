@@ -28,6 +28,10 @@ export interface BookamatAccountData {
   icService?: boolean;
   /** tax: allowed VAT rates. */
   taxValues?: number[];
+  /** tax: UVA-Kennzahlen; rate-specific ones (022, 029 …) apply to lines of that rate only. */
+  indexPurchasetax?: string[];
+  /** cost: Kennzahlen of the income tax return (E1a). */
+  indexIncometax?: string[];
   active?: boolean;
 }
 

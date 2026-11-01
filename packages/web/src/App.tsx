@@ -20,6 +20,7 @@ import AccountingPage from './pages/Accounting/AccountingPage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import PayingHabitPage from './pages/Reports/PayingHabitPage';
 import ReconcilePage from './pages/Reconcile/ReconcilePage';
+import VatPage from './pages/Vat/VatPage';
 
 dayjs.locale('de');
 
@@ -91,6 +92,7 @@ export default function App() {
                 <Route path="expenses" element={<ExpensesListPage />} />
                 <Route path="accounting" element={<AccountingPage />} />
                 <Route path="reconcile" element={<ReconcilePage />} />
+                <Route path="vat" element={<VatPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="reports/paying-habit" element={<PayingHabitPage />} />
               </Route>

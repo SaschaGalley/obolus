@@ -170,6 +170,13 @@ export const reconcileApi = {
   refresh: () => apiClient.post('/bookamat/reconcile/refresh'),
 };
 
+// Umsatzsteuervoranmeldung und Zusammenfassende Meldung
+export const vatApi = {
+  getYear: (year: number) => apiClient.get(`/bookamat/vat/${year}`),
+  export: (year: number, period: string) =>
+    apiClient.get(`/bookamat/vat/${year}/export`, { params: { period }, responseType: 'blob' }),
+};
+
 // Search
 export const searchApi = {
   search: (query: string) =>

@@ -11,6 +11,8 @@ import { BookamatScheduler } from './bookamat.scheduler';
 import { ReconcileController } from './reconcile/reconcile.controller';
 import { ReconcileService } from './reconcile/reconcile.service';
 import { UmsatzClient } from './reconcile/umsatz.client';
+import { VatController } from './vat/vat.controller';
+import { VatService } from './vat/vat.service';
 
 @Module({
   imports: [
@@ -18,7 +20,7 @@ import { UmsatzClient } from './reconcile/umsatz.client';
     PdfModule,
     InvoicesModule,
   ],
-  controllers: [BookamatController, ReconcileController],
-  providers: [BookamatClient, BookamatService, OverviewService, BookamatScheduler, ReconcileService, UmsatzClient],
+  controllers: [BookamatController, ReconcileController, VatController],
+  providers: [BookamatClient, BookamatService, OverviewService, BookamatScheduler, ReconcileService, UmsatzClient, VatService],
 })
 export class BookamatModule {}

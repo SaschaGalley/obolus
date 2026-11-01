@@ -40,6 +40,8 @@ export interface SyncResult {
   imported: number;
   /** True when Bookamat returned 404 for this year (skipped, not failed). */
   skipped?: boolean;
+  /** Stored bookings of the year that Bookamat no longer has. */
+  removed?: number;
 }
 
 @Injectable()
@@ -99,17 +101,22 @@ export class BookamatService {
       return { year, imported: 0, skipped: true };
     }
     // The year's accounts come along: the reconciliation resolves names to
-    // this year's IDs when it transfers a booking.
+    // this year's IDs when it transfers a booking, the VAT report reads their
+    // Kennzahlen.
     await this.syncAccounts(userId, year);
-
-    if (bookings.length === 0) {
-      this.logger.log(`  → no bookings`);
-      return { year, imported: 0 };
-    }
-
     // Ensure a year_settings row exists (so OverviewService doesn't have to
     // handle the missing-row case for years we've actually synced).
     await this.ensureYearSettings(userId, year);
+    await this.syncSettings(userId, year);
+
+    // Bookamat's list is the year: rows it no longer returns were deleted
+    // there and must not count in the VAT report.
+    const removed = await this.removeStale(userId, year, bookings.map((b) => b.id));
+
+    if (bookings.length === 0) {
+      this.logger.log(`  → no bookings`);
+      return { year, imported: 0, removed };
+    }
 
     const rows = bookings.map((b) => this.mapBooking(userId, b));
     await this.bookingRepo.upsert(rows, {
@@ -117,8 +124,8 @@ export class BookamatService {
       skipUpdateIfNoValuesChanged: true,
     });
 
-    this.logger.log(`  → ${rows.length} bookings`);
-    return { year, imported: rows.length };
+    this.logger.log(`  → ${rows.length} bookings, ${removed} removed`);
+    return { year, imported: rows.length, removed };
   }
 
   /** Map a Bookamat API booking to the obulus Booking entity. */
@@ -202,6 +209,33 @@ export class BookamatService {
     }
   }
 
+  /**
+   * Take the UVA/ZM periods and Ist/Soll from Bookamat's Grundeinstellungen.
+   * Optional: a failure leaves the stored values and does not fail the sync.
+   */
+  private async syncSettings(userId: number, year: number): Promise<void> {
+    try {
+      const s = await this.client.fetchSettings(year);
+      if (!s) return;
+      const period = (v?: string) => (v === '1' ? 'month' : v === '2' ? 'quarter' : null);
+      const method = s.accounting_method === 'cash' || s.accounting_method === 'accrual' ? s.accounting_method : null;
+      await this.yearSettingsRepo.update(
+        { userId, year },
+        { vatPeriod: period(s.purchasetax_range), vatMethod: method, zmPeriod: period(s.ic_report_range) },
+      );
+    } catch (err) {
+      this.logger.warn(`Settings ${year} not synced: ${(err as Error).message}`);
+    }
+  }
+
+  private async removeStale(userId: number, year: number, keep: number[]): Promise<number> {
+    const qb = this.bookingRepo.createQueryBuilder().delete()
+      .where('user_id = :userId AND year = :year', { userId, year });
+    if (keep.length) qb.andWhere('bookamat_id NOT IN (:...keep)', { keep });
+    const result = await qb.execute();
+    return result.affected ?? 0;
+  }
+
   /** The accounts of a year, synced on demand when none are stored yet. */
   public async accountsForYear(userId: number, year: number): Promise<BookamatAccount[]> {
     let accounts = await this.accountRepo.find({ where: { userId, year }, order: { name: 'ASC' } });
@@ -222,6 +256,7 @@ export class BookamatService {
           purchasetaxaccounts: (p.purchasetaxaccounts ?? []).map((t) => t.name),
           deductibilityTaxPercent: numOrNull(p.deductibility_tax_percent),
           deductibilityAmountPercent: numOrNull(p.deductibility_amount_percent),
+          indexIncometax: p.index_incometax ?? [],
         };
       case 'tax':
         return {
@@ -233,6 +268,7 @@ export class BookamatService {
           icDelivery: !!p.ic_delivery,
           icService: !!p.ic_service,
           taxValues: (p.tax_values ?? []).map(num),
+          indexPurchasetax: p.index_purchasetax ?? [],
         };
       default:
         return {};

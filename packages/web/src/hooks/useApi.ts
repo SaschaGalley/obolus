@@ -8,6 +8,7 @@ import {
   expensesApi,
   dashboardApi,
   bookamatApi,
+  vatApi,
   reconcileApi,
   searchApi,
   reportsApi,
@@ -382,6 +383,15 @@ export function useSyncBookamatYear() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bookamat'] });
     },
+  });
+}
+
+// UVA und ZM; under ['bookamat'] so a sync refreshes it.
+export function useVatReport(year: number) {
+  return useQuery({
+    queryKey: ['bookamat', 'vat', year],
+    queryFn: () => vatApi.getYear(year).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 }
 

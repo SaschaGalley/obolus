@@ -8,6 +8,6 @@ export { Expense, ExpenseType } from './expense.entity';
 export { Image } from './image.entity';
 export { Activity } from './activity.entity';
 export { Booking, BookingAmountLine } from './booking.entity';
-export { YearSettings } from './year-settings.entity';
+export { YearSettings, VatPeriod, VatMethod } from './year-settings.entity';
 export { BookamatAccount, BookamatAccountKind, BookamatAccountData } from './bookamat-account.entity';
 export { BankMatch } from './bank-match.entity';
