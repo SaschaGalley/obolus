@@ -8,7 +8,7 @@ import { InvoicesService } from '../../invoices/invoices.service';
 import { BookamatClient, BookamatBookingCreate } from '../bookamat.client';
 import { BookamatService } from '../bookamat.service';
 import { Match, matchTransactions } from './matcher';
-import { normalizeVatin, suggest, SuggestContext, YearAccounts } from './suggest';
+import { needsInvoiceDate, normalizeVatin, suggest, SuggestContext, YearAccounts } from './suggest';
 import { UmsatzClient } from './umsatz.client';
 import { BankTx, Decision, HistBooking, InvoiceRef, Suggestion } from './types';
 import { TransferDto } from './dto';
@@ -246,6 +246,12 @@ export class ReconcileService {
     const costcentre = b.costcentre ? idOf('costcentre', b.costcentre) : undefined;
     if (b.costcentre && !costcentre) missing.push(`Kostenstelle „${b.costcentre}“`);
     if (missing.length) throw new BadRequestException(`In Bookamat ${year} nicht aktiviert: ${missing.join(', ')}.`);
+    const strict = b.amounts
+      .map((a) => accounts.find((x) => x.kind === 'tax' && x.name === a.purchasetaxaccount))
+      .find((t) => needsInvoiceDate(t?.data));
+    if (strict && !b.dateInvoice) {
+      throw new BadRequestException(`Rechnungsdatum fehlt: Bookamat verlangt es beim USt-Konto „${strict.name}“.`);
+    }
 
     const request: BookamatBookingCreate = {
       title: b.title.slice(0, 50),

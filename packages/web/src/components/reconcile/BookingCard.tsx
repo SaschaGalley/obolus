@@ -94,6 +94,9 @@ const readBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+/** Bookamat refuses a booking on a reverse-charge or ZM account without Rechnungsdatum. */
+const needsInvoiceDate = (tax?: { reverseCharge: boolean; icReport: boolean }) => !!(tax?.reverseCharge || tax?.icReport);
+
 /** Same checks as the API's `validate`, on the edited values. */
 function liveWarnings(v: Partial<Values>, accounts: Accounts): string[] {
   const out: string[] = [];
@@ -108,6 +111,7 @@ function liveWarnings(v: Partial<Values>, accounts: Accounts): string[] {
     out.push(`USt-Satz ${v.taxPercent} % passt nicht zu „${tax.name}“ (erlaubt: ${tax.taxValues.join(', ')} %).`);
   }
   if (tax?.icReport && !v.vatin) out.push(`„${tax.name}“ braucht eine UID.`);
+  if (needsInvoiceDate(tax) && !v.dateInvoice) out.push(`„${tax!.name}“ verlangt ein Rechnungsdatum.`);
   return out;
 }
 
@@ -153,7 +157,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   const warnings = useMemo(() => {
     const live = liveWarnings(values, accounts);
     // Server warnings that are not account checks (amount ≠ invoice, booked differently before) stay.
-    const other = s.warnings.filter((w) => !/nicht aktiviert|nicht erlaubt|passt nicht|braucht eine UID/.test(w));
+    const other = s.warnings.filter((w) => !/nicht aktiviert|nicht erlaubt|passt nicht|braucht eine UID|verlangt ein Rechnungsdatum/.test(w));
     return [...other, ...live];
   }, [values, accounts, s.warnings]);
 
@@ -165,6 +169,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   const taxOptions = accounts.tax
     .filter((t) => (allowedTax.length ? allowedTax.includes(t.name) : !t.group || t.group === (incoming ? '1' : '2')))
     .map((t) => ({ value: t.name, label: t.reverseCharge ? `${t.name} (Reverse Charge)` : t.name }));
+  const invoiceDateRequired = needsInvoiceDate(accounts.tax.find((t) => t.name === values.purchasetaxaccount));
   const withCurrent = (opts: { value: string; label: string }[], current: string | null | undefined) =>
     current && !opts.some((o) => o.value === current) ? [{ value: current, label: `${current} (nicht aktiviert)` }, ...opts] : opts;
 
@@ -335,7 +340,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
         <Row gutter={12}>
           {field('title', <Input maxLength={50} showCount />, { sm: 24, lg: 12 }, true)}
           {field('date', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 }, true)}
-          {field('dateInvoice', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 })}
+          {field('dateInvoice', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 }, invoiceDateRequired)}
           {field('dateDelivery', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 })}
 
           {field('bankaccount', accounts.bank.length

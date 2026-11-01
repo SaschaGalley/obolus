@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { deriveTitle, findInvoice, monthEnd, suggest, SuggestContext, YearAccounts } from './suggest';
+import { deriveTitle, findInvoice, monthEnd, suggest, SuggestContext, validate, YearAccounts } from './suggest';
 import { BankTx, HistBooking, InvoiceRef } from './types';
 import type { BookingAmountLine } from '../../../database/entities/booking.entity';
 
@@ -136,4 +136,40 @@ test('checks against the year: tax account not allowed, rate not allowed, UID mi
   assert.ok(s.warnings.some((w) => w.includes('nicht erlaubt')));
   assert.ok(s.warnings.some((w) => w.includes('USt-Satz 13 %')));
   assert.ok(s.warnings.some((w) => w.includes('braucht eine UID')));
+});
+
+test('reverse charge without a learned invoice date: Bookamat requires one, so it is estimated', () => {
+  const accounts: YearAccounts = {
+    year: 2026,
+    cost: new Map([['Software', {}]]),
+    tax: new Map([['Reverse Charge Leistungen', { reverseCharge: true, taxValues: [20] }]]),
+    bank: new Set(['Bank']),
+    costcentre: new Set(),
+  };
+  const rc = line({ purchasetaxaccount: 'Reverse Charge Leistungen' });
+  const pairs = [
+    { tx: tx({ id: 'p1', day: '2026-09-14', merchantId: 'cloudtool' }), booking: booking({ bookamatId: 21, date: '2026-09-14', vatin: 'IE9999999X', amounts: [rc] }) },
+    { tx: tx({ id: 'p2', day: '2026-08-14', merchantId: 'cloudtool' }), booking: booking({ bookamatId: 20, date: '2026-08-14', vatin: 'IE9999999X', amounts: [rc] }) },
+  ];
+  const s = suggest(tx({ id: 'now', day: '2026-10-14', merchantId: 'cloudtool' }), ctx({ pairs, accounts }));
+  assert.equal(s.fields.dateInvoice.value, '2026-10-14');
+  assert.equal(s.fields.dateInvoice.estimated, true);
+  assert.match(s.fields.dateInvoice.source, /Pflicht/);
+  assert.equal(s.fields.dateDelivery.value, '2026-10-14');
+  assert.equal(s.fields.dateDelivery.estimated, true);
+  assert.ok(!s.warnings.some((w) => w.includes('Rechnungsdatum')));
+
+  const cleared = validate({ ...s.fields, dateInvoice: { value: null, source: '' } }, accounts);
+  assert.ok(cleared.some((w) => w.includes('verlangt ein Rechnungsdatum')));
+});
+
+test('rows synced before the dates were stored do not teach an empty invoice date', () => {
+  const pairs = [
+    { tx: tx({ id: 'p1', day: '2026-09-14', merchantId: 'cloudtool' }), booking: booking({ bookamatId: 22, date: '2026-09-14', amounts: null }) },
+    { tx: tx({ id: 'p2', day: '2026-08-14', merchantId: 'cloudtool' }), booking: booking({ bookamatId: 21, date: '2026-08-14', amounts: null }) },
+    { tx: tx({ id: 'p3', day: '2026-07-14', merchantId: 'cloudtool' }), booking: booking({ bookamatId: 20, date: '2026-07-14', dateInvoice: '2026-07-14' }) },
+  ];
+  const s = suggest(tx({ id: 'now', day: '2026-10-14', merchantId: 'cloudtool' }), ctx({ pairs }));
+  assert.equal(s.fields.dateInvoice.value, '2026-10-14');
+  assert.equal(s.fields.dateInvoice.source, 'wie bisher: = Zahlungsdatum');
 });

@@ -287,7 +287,10 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
   const known = (n: number) => (similar.basis === 'category' ? similar.label : n > 1 ? `wie ${n}× zuvor` : 'wie zuletzt');
   const fromHistory = sameCount ? known(sameCount) : 'neu, bitte wählen';
   const newRef = invoice?.sentAt ?? tx.day;
-  const window = similar.bookings.slice(0, RULE_WINDOW);
+  // Rows synced before all fields were stored have unknown dates, not empty ones.
+  const window = similar.bookings.filter((b) => b.amounts).slice(0, RULE_WINDOW);
+  const taxAccount = line?.purchasetaxaccount ? ctx.accounts?.tax.get(line.purchasetaxaccount) : undefined;
+  const datesRequired = needsInvoiceDate(taxAccount);
 
   // Rechnungsdatum
   let dateInvoice: Field;
@@ -303,6 +306,9 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
         ? { value: tx.day, source: 'wie bisher: = Zahlungsdatum' }
         : { value: tx.day, source: 'geschätzt, Beleg prüfen', estimated: true };
   }
+  if (datesRequired && !dateInvoice.value) {
+    dateInvoice = { value: newRef, source: `Pflicht bei „${line!.purchasetaxaccount}“, geschätzt – Beleg prüfen`, estimated: true };
+  }
 
   // Lieferdatum
   let dateDelivery: Field;
@@ -315,6 +321,10 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
     dateDelivery = { value: monthEnd(invoiceDay, -1), source: 'Standard: Monatsletzter vor der Rechnung' };
   } else {
     dateDelivery = { value: null, source: 'leer' };
+  }
+  // Reverse charge and ZM fall into the period of the delivery.
+  if (datesRequired && !dateDelivery.value) {
+    dateDelivery = { value: dateInvoice.value, source: 'geschätzt: = Rechnungsdatum, Beleg prüfen', estimated: true };
   }
 
   // Titel
@@ -407,5 +417,13 @@ export function validate(fields: Record<FieldKey, Field>, accounts?: YearAccount
   if (taxData?.icReport && !fields.vatin.value) {
     out.push(`„${tax}“ braucht eine UID, die fehlt noch.`);
   }
+  if (needsInvoiceDate(taxData) && !fields.dateInvoice.value) {
+    out.push(`„${tax}“ verlangt ein Rechnungsdatum.`);
+  }
   return out;
+}
+
+/** Bookamat refuses a booking on a reverse-charge or ZM account without Rechnungsdatum. */
+export function needsInvoiceDate(tax?: BookamatAccountData | null): boolean {
+  return !!(tax?.reverseCharge || tax?.icReport);
 }
