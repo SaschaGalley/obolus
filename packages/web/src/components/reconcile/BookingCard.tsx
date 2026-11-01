@@ -12,7 +12,7 @@ import SmartDatePicker from '../SmartDatePicker';
 import { useTransferBooking, useIgnoreMovement, useLinkBooking, useUnmatchedBookings } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { apiErrorText } from '../../utils/errors';
-import type { Accounts, Field, FieldKey, MonthEntry } from './types';
+import type { Accounts, CostAccount, Field, FieldKey, MonthEntry, TaxAccount } from './types';
 
 const { Text } = Typography;
 
@@ -51,6 +51,13 @@ interface UnmatchedBooking {
   /** Not yet covered by linked movements (a booking of several movements). */
   rest: number;
 }
+
+type Option = { value: string; label: string };
+type Options = (Option | { label: string; options: Option[] })[];
+const option = (value: string, label = value): Option => ({ value, label });
+/** Select groups, empty ones left out. */
+const groups = (list: [string, Option[]][]): Options =>
+  list.filter(([, options]) => options.length).map(([label, options]) => ({ label, options }));
 
 const DATE_FIELDS: FieldKey[] = ['date', 'dateInvoice', 'dateDelivery'];
 
@@ -107,7 +114,9 @@ function liveWarnings(v: Partial<Values>, accounts: Accounts): string[] {
   if (v.costaccount && accounts.cost.length && !cost) out.push(`Steuerkonto „${v.costaccount}“ ist in Bookamat nicht aktiviert.`);
   if (v.purchasetaxaccount && accounts.tax.length && !tax) out.push(`USt-Konto „${v.purchasetaxaccount}“ ist in Bookamat nicht aktiviert.`);
   if (cost && v.purchasetaxaccount && cost.purchasetaxaccounts.length && !cost.purchasetaxaccounts.includes(v.purchasetaxaccount)) {
-    out.push(`USt-Konto „${v.purchasetaxaccount}“ ist beim Steuerkonto „${cost.name}“ nicht erlaubt.`);
+    const fits = accounts.cost.filter((c) => c.group === cost.group && c.purchasetaxaccounts.includes(v.purchasetaxaccount!)).map((c) => c.name);
+    out.push(`USt-Konto „${v.purchasetaxaccount}“ ist beim Steuerkonto „${cost.name}“ nicht erlaubt`
+      + `${fits.length ? ` – erlaubt z. B. bei ${fits.slice(0, 4).join(', ')}` : ''}.`);
   }
   if (tax?.taxValues.length && v.taxPercent != null && !tax.taxValues.some((r) => Math.abs(r - v.taxPercent) < 0.001)) {
     out.push(`USt-Satz ${v.taxPercent} % passt nicht zu „${tax.name}“ (erlaubt: ${tax.taxValues.join(', ')} %).`);
@@ -164,16 +173,35 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   }, [values, accounts, s.warnings]);
 
   const incoming = tx.amount > 0;
-  const costOptions = accounts.cost
-    .filter((c) => !c.group || c.group === (incoming ? '1' : '2'))
-    .map((c) => ({ value: c.name, label: c.name }));
-  const allowedTax = accounts.cost.find((c) => c.name === values.costaccount)?.purchasetaxaccounts ?? [];
-  const taxOptions = accounts.tax
-    .filter((t) => (allowedTax.length ? allowedTax.includes(t.name) : !t.group || t.group === (incoming ? '1' : '2')))
-    .map((t) => ({ value: t.name, label: t.reverseCharge ? `${t.name} (Reverse Charge)` : t.name }));
+  const ofSide = (a: { group: string | null }) => !a.group || a.group === (incoming ? '1' : '2');
+  const cost = accounts.cost.find((c) => c.name === values.costaccount);
+  const taxOption = (t: TaxAccount) => option(t.name, t.reverseCharge ? `${t.name} (Reverse Charge)` : t.name);
+
+  // Every USt-Konto of the side; the ones Bookamat does not allow with the chosen Steuerkonto apart.
+  const allowedTax = cost?.purchasetaxaccounts ?? [];
+  const taxOptions: Options = allowedTax.length
+    ? groups([
+      [`Bei „${cost!.name}“ erlaubt`, accounts.tax.filter((t) => allowedTax.includes(t.name)).map(taxOption)],
+      ['Nur mit anderem Steuerkonto', accounts.tax.filter((t) => ofSide(t) && !allowedTax.includes(t.name)).map(taxOption)],
+    ])
+    : accounts.tax.filter(ofSide).map(taxOption);
+
+  // A USt-Konto the chosen Steuerkonto does not allow: the Steuerkonten that do, first.
+  const tax = values.purchasetaxaccount;
+  const allows = (c: CostAccount) => !tax || !c.purchasetaxaccounts.length || c.purchasetaxaccounts.includes(tax);
+  const sideCost = accounts.cost.filter(ofSide);
+  const costOptions: Options = cost && !allows(cost)
+    ? groups([
+      [`Mit „${tax}“ erlaubt`, sideCost.filter(allows).map((c) => option(c.name))],
+      ['Andere', sideCost.filter((c) => !allows(c)).map((c) => option(c.name))],
+    ])
+    : sideCost.map((c) => option(c.name));
+
   const invoiceDateRequired = needsInvoiceDate(accounts.tax.find((t) => t.name === values.purchasetaxaccount));
-  const withCurrent = (opts: { value: string; label: string }[], current: string | null | undefined) =>
-    current && !opts.some((o) => o.value === current) ? [{ value: current, label: `${current} (nicht aktiviert)` }, ...opts] : opts;
+  const withCurrent = (opts: Options, current: string | null | undefined) => {
+    const flat = opts.flatMap((o) => ('options' in o ? o.options : [o]));
+    return current && !flat.some((o) => o.value === current) ? [option(current, `${current} (nicht aktiviert)`), ...opts] : opts;
+  };
 
   /** Steuerkonto chosen: keep a matching USt-Konto, take Bookamat's fixed shares. */
   const onCostChange = (name: string) => {
