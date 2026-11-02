@@ -10,6 +10,7 @@ import {
 import dayjs, { type Dayjs } from 'dayjs';
 import SmartDatePicker from '../SmartDatePicker';
 import AccountTag from './AccountTag';
+import { useFileDrop } from './useFileDrop';
 import { useTransferBooking, useIgnoreMovement, useLinkBooking, useUnmatchedBookings } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { apiErrorText } from '../../utils/errors';
@@ -104,6 +105,9 @@ const readBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+/** What Bookamat takes as a Beleg. */
+const RECEIPT_TYPES = ['.pdf', '.png', '.jpg', '.jpeg'];
+
 /** Bookamat refuses a booking on a reverse-charge or ZM account without Rechnungsdatum. */
 const needsInvoiceDate = (tax?: { reverseCharge: boolean; icReport: boolean }) => !!(tax?.reverseCharge || tax?.icReport);
 
@@ -150,6 +154,14 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   const [attachInvoice, setAttachInvoice] = useState(true);
   const [markPaid, setMarkPaid] = useState(!s.invoice?.payedAt);
   const [attachment, setAttachment] = useState<{ name: string; data: string } | null>(null);
+  const attach = async (file: File) => {
+    if (!RECEIPT_TYPES.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+      message.warning(`„${file.name}“: als Beleg gehen nur PDF, PNG oder JPG.`);
+      return;
+    }
+    setAttachment({ name: file.name, data: await readBase64(file) });
+  };
+  const drop = useFileDrop(attach);
   const [showMore, setShowMore] = useState(MORE_FIELDS.some((k) => s.fields[k].value != null && s.fields[k].value !== ''));
   const [preview, setPreview] = useState<TransferPreview | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -328,7 +340,8 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   return (
     <Card
       size="small"
-      style={{ marginBottom: 16 }}
+      style={{ marginBottom: 16, position: 'relative' }}
+      {...drop.props}
       title={(
         <Space wrap size={8} style={{ fontWeight: 400 }}>
           <Text strong>{formatDate(tx.day)}</Text>
@@ -341,6 +354,16 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
       )}
       extra={basisTag}
     >
+      {drop.dragging && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none', borderRadius: 8,
+          border: '2px dashed #0ea5e9', background: 'rgba(240, 249, 255, 0.88)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1', fontSize: 16,
+        }}>
+          <Space><PaperClipOutlined />{attachment ? `Beleg ersetzen (statt „${attachment.name}“)` : 'Als Beleg anhängen'}</Space>
+        </div>
+      )}
+
       <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 13 }}>
         {s.profile ? <>Buchungsart <Text strong>{s.profile.label}</Text> · </> : null}
         {s.basisLabel}
@@ -417,17 +440,21 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
       )}
 
       <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
-        <Upload
-          maxCount={1}
-          accept=".pdf,.png,.jpg,.jpeg"
-          beforeUpload={async (file) => {
-            setAttachment({ name: file.name, data: await readBase64(file) });
-            return false;
-          }}
-          onRemove={() => setAttachment(null)}
-        >
-          <Button icon={<PaperClipOutlined />}>Beleg anhängen</Button>
-        </Upload>
+        <Space align="start" size={12}>
+          <Upload
+            maxCount={1}
+            accept={RECEIPT_TYPES.join(',')}
+            fileList={attachment ? [{ uid: 'beleg', name: attachment.name, status: 'done' }] : []}
+            beforeUpload={(file) => {
+              void attach(file);
+              return false;
+            }}
+            onRemove={() => setAttachment(null)}
+          >
+            <Button icon={<PaperClipOutlined />}>Beleg anhängen</Button>
+          </Upload>
+          {!attachment && <Text type="secondary" style={{ fontSize: 12, lineHeight: '32px' }}>oder auf die Karte ziehen</Text>}
+        </Space>
         <Space wrap>
           <Dropdown
             menu={{

@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '../../utils/format';
 import { apiErrorText } from '../../utils/errors';
 import BookingCard from '../../components/reconcile/BookingCard';
 import AccountTag from '../../components/reconcile/AccountTag';
+import { useNoStrayDrop } from '../../components/reconcile/useFileDrop';
 import type { MonthCounts, MonthEntry, MonthView } from '../../components/reconcile/types';
 
 const { Title, Text } = Typography;
@@ -28,6 +29,7 @@ const VIA: Record<string, { label: string; color: string }> = {
  * lacks, each with the booking form filled in, and what is already booked.
  */
 export default function ReconcilePage() {
+  useNoStrayDrop();
   const [params, setParams] = useSearchParams();
   const now = dayjs();
   const year = Number(params.get('y')) || now.year();
