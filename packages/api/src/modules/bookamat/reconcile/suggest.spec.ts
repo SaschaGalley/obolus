@@ -90,6 +90,14 @@ test('first invoice to a client without history still gets the default delivery 
   assert.equal(s.fields.costaccount.estimated, true);
 });
 
+test('Land from the UID, but none for an Austrian one: Bookamat lists no AT', () => {
+  const at = suggest(tx({ amount: 1200, description: 'RE 2026-014' }), ctx({ invoices: [invoice({ gross: 1200, clientVatNumber: 'ATU12345678', reverseCharge: false })] }));
+  assert.equal(at.fields.vatin.value, 'ATU12345678');
+  assert.equal(at.fields.country.value, null);
+  const gr = suggest(tx({ amount: 4800, description: 'RE 2026-014' }), ctx({ invoices: [invoice({ clientVatNumber: 'EL123456789' })] }));
+  assert.equal(gr.fields.country.value, 'GR');
+});
+
 test('recurring vendor: everything as the last times, title moved a month on', () => {
   const rc = line({ costaccount: 'Software', purchasetaxaccount: 'Reverse Charge Leistungen', taxPercent: 20 });
   const pairs = [

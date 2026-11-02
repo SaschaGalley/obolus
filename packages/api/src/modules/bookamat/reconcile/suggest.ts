@@ -346,8 +346,9 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
       ? { value: prevVatin, source: 'wie zuletzt' }
       : { value: null, source: 'leer' };
   const prevCountry = similar.basis === 'category' ? null : similar.bookings.find((b) => b.country)?.country ?? null;
+  // Bookamat's country list has no AT: an Austrian UID gives no Land.
   const vatinCountry = countryOfVatin(vatin.value as string | null);
-  const country: Field = vatinCountry
+  const country: Field = vatinCountry && vatinCountry !== 'AT'
     ? { value: vatinCountry, source: 'aus der UID' }
     : prevCountry ? { value: prevCountry, source: 'wie zuletzt' } : { value: null, source: 'leer' };
 

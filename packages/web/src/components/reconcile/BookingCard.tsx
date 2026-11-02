@@ -11,6 +11,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import SmartDatePicker from '../SmartDatePicker';
 import AccountTag from './AccountTag';
 import { useFileDrop } from './useFileDrop';
+import { COUNTRY_GROUPS } from './countries';
 import { useTransferBooking, useIgnoreMovement, useLinkBooking, useUnmatchedBookings } from '../../hooks/useApi';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { apiErrorText } from '../../utils/errors';
@@ -60,6 +61,8 @@ const option = (value: string, label = value): Option => ({ value, label });
 /** Select groups, empty ones left out. */
 const groups = (list: [string, Option[]][]): Options =>
   list.filter(([, options]) => options.length).map(([label, options]) => ({ label, options }));
+/** Searchable by name or code: „Deutschland (DE)“. */
+const COUNTRY_OPTIONS = groups(COUNTRY_GROUPS.map(([label, list]) => [label, list.map(([code, name]) => option(code, `${name} (${code})`))]));
 
 const DATE_FIELDS: FieldKey[] = ['date', 'dateInvoice', 'dateDelivery'];
 
@@ -242,10 +245,20 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
     : sideCost.map((c) => option(c.name));
 
   const invoiceDateRequired = needsInvoiceDate(accounts.tax.find((t) => t.name === values.purchasetaxaccount));
-  const withCurrent = (opts: Options, current: string | null | undefined) => {
+  const withCurrent = (opts: Options, current: string | null | undefined, note = 'nicht aktiviert') => {
     const flat = opts.flatMap((o) => ('options' in o ? o.options : [o]));
-    return current && !flat.some((o) => o.value === current) ? [option(current, `${current} (nicht aktiviert)`), ...opts] : opts;
+    return current && !flat.some((o) => o.value === current) ? [option(current, `${current} (${note})`), ...opts] : opts;
   };
+  const countrySelect = (key: 'country' | 'countryDep' | 'countryRec') => (
+    <Select
+      showSearch
+      allowClear
+      optionFilterProp="label"
+      popupMatchSelectWidth={false}
+      placeholder="Land wählen"
+      options={withCurrent(COUNTRY_OPTIONS, values[key], 'nicht in Bookamats Länderliste')}
+    />
+  );
 
   /** Steuerkonto chosen: keep a matching USt-Konto, take Bookamat's fixed shares. */
   const onCostChange = (name: string) => {
@@ -445,10 +458,10 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
           {field('deductibilityTaxPercent', percent, { lg: 4 }, true)}
           {field('deductibilityAmountPercent', percent, { lg: 4 }, true)}
           {field('vatin', <Input maxLength={20} placeholder="z. B. DE123456789" />, { lg: 4 })}
-          {field('country', <Input maxLength={2} style={{ textTransform: 'uppercase' }} />, { lg: 4 })}
+          {field('country', countrySelect('country'), { lg: 4 })}
 
-          {field('countryDep', <Input maxLength={2} />, { lg: 4 })}
-          {field('countryRec', <Input maxLength={2} />, { lg: 4 })}
+          {field('countryDep', countrySelect('countryDep'), { lg: 4 })}
+          {field('countryRec', countrySelect('countryRec'), { lg: 4 })}
           {field('costcentre', accounts.costcentre.length
             ? <Select allowClear options={withCurrent(accounts.costcentre.map((c) => ({ value: c, label: c })), values.costcentre)} />
             : <Input />, { lg: 4 })}
