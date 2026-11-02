@@ -163,7 +163,15 @@ const NOISE = new Set([
 export const words = (text: string | null | undefined): string[] =>
   (text ?? '').toLowerCase().split(/[^a-zäöüß]+/).filter((w) => w.length >= 4 && !NOISE.has(w));
 
-export const normalizeVatin = (v: string | null | undefined) => (v ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+/** Shared words of two texts over all their words, 0…1. */
+function overlap(a: string[], b: string[]): number {
+  const all = new Set([...a, ...b]);
+  if (!all.size) return 0;
+  const inB = new Set(b);
+  return new Set(a.filter((w) => inB.has(w))).size / all.size;
+}
+
+export const normalizeVatin =(v: string | null | undefined) => (v ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
 /**
  * ISO country of a UID's prefix (Greece writes EL). None for EU: that is the
@@ -216,8 +224,15 @@ function findSimilar(tx: BankTx, invoice: InvoiceRef | null, ctx: SuggestContext
   }
 
   if (tx.merchantId) {
-    const hits = ctx.pairs.filter((p) => p.tx.merchantId === tx.merchantId && p.tx.id !== tx.id).map((p) => p.booking);
-    if (hits.length) return { basis: 'history', label: `wie bisher bei ${tx.merchant ?? 'diesem Händler'}`, bookings: newestFirst(hits) };
+    const pairs = ctx.pairs.filter((p) => p.tx.merchantId === tx.merchantId && p.tx.id !== tx.id);
+    if (pairs.length) {
+      // One merchant may bill from two companies (a US one and an Irish one): the movements whose text matches best.
+      const own = words(tx.description);
+      const score = (p: SuggestContext['pairs'][number]) => overlap(own, words(p.tx.description));
+      const best = Math.max(...pairs.map(score));
+      const hits = pairs.filter((p) => score(p) === best).map((p) => p.booking);
+      return { basis: 'history', label: `wie bisher bei ${tx.merchant ?? 'diesem Händler'}`, bookings: newestFirst(hits) };
+    }
   }
 
   const txWords = words(tx.merchant || tx.description);
@@ -341,14 +356,15 @@ export function suggest(tx: BankTx, ctx: SuggestContext): Suggestion {
     title = { value: (tx.merchant || tx.description).trim().slice(0, TITLE_MAX), source: 'Kontoauszug', estimated: true };
   }
 
-  // UID und Land
-  const prevVatin = similar.basis === 'category' ? null : similar.bookings.find((b) => b.vatin)?.vatin ?? null;
+  // UID und Land: only from bookings made the same way as the chosen one, not from any of the merchant's.
+  const sameWay = chosen ? withLines.filter((b) => signatureOf(b) === signature) : similar.bookings;
+  const prevVatin = similar.basis === 'category' ? null : sameWay.find((b) => b.vatin)?.vatin ?? null;
   const vatin: Field = invoice?.clientVatNumber
     ? { value: normalizeVatin(invoice.clientVatNumber), source: 'Obolus-Kunde' }
     : prevVatin
       ? { value: prevVatin, source: 'wie zuletzt' }
       : { value: null, source: 'leer' };
-  const prevCountry = similar.basis === 'category' ? null : similar.bookings.find((b) => b.country)?.country ?? null;
+  const prevCountry = similar.basis === 'category' ? null : sameWay.find((b) => b.country)?.country ?? null;
   // Bookamat's country list has no AT: an Austrian UID gives no Land.
   const vatinCountry = countryOfVatin(vatin.value as string | null);
   const country: Field = vatinCountry && vatinCountry !== 'AT'

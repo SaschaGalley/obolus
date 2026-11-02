@@ -120,6 +120,37 @@ test('recurring vendor: everything as the last times, title moved a month on', (
   assert.equal(s.fields.country.value, 'IE');
 });
 
+test('one merchant billing from two companies: each movement booked like the ones with its text, UID never borrowed', () => {
+  // Invented: "Modellwerk" bills a subscription from the US and usage from an Irish company.
+  const us = line({ costaccount: 'Software', purchasetaxaccount: 'Reverse Charge Drittland', taxPercent: 20 });
+  const ie = line({ costaccount: 'Software', purchasetaxaccount: 'Reverse Charge Leistungen', taxPercent: 20 });
+  const pair = (id: string, day: string, description: string, over: Partial<HistBooking>) => ({
+    tx: tx({ id, day, description, merchant: 'Modellwerk', merchantId: 'modellwerk' }),
+    booking: booking({ bookamatId: Number(id.slice(1)), date: day, ...over }),
+  });
+  const pairs = [
+    pair('p4', '2026-09-20', 'MODELLWERK IRELAND Kartenzahlung', { title: 'Modellwerk API 09/2026', vatin: 'IE9999999X', country: 'IE', amounts: [ie] }),
+    pair('p3', '2026-09-05', 'MODELLWERK Kartenzahlung', { title: 'Modellwerk Abo 09/2026', country: 'US', amounts: [us] }),
+    pair('p2', '2026-08-20', 'MODELLWERK IRELAND Kartenzahlung', { title: 'Modellwerk API 08/2026', vatin: 'IE9999999X', country: 'IE', amounts: [ie] }),
+    pair('p1', '2026-08-05', 'MODELLWERK Kartenzahlung', { title: 'Modellwerk Abo 08/2026', country: 'US', amounts: [us] }),
+  ];
+  const now = (description: string) => suggest(tx({ id: 'now', day: '2026-10-05', amount: -90, description, merchant: 'Modellwerk', merchantId: 'modellwerk' }), ctx({ pairs }));
+
+  const abo = now('MODELLWERK Kartenzahlung');
+  assert.equal(abo.fields.title.value, 'Modellwerk Abo 10/2026');
+  assert.equal(abo.fields.purchasetaxaccount.value, 'Reverse Charge Drittland');
+  assert.equal(abo.fields.vatin.value, null);
+  assert.equal(abo.fields.country.value, 'US');
+  assert.equal(abo.profile?.count, 2);
+  assert.deepEqual(abo.warnings, []);
+
+  const api = now('MODELLWERK IRELAND Kartenzahlung');
+  assert.equal(api.fields.title.value, 'Modellwerk API 10/2026');
+  assert.equal(api.fields.purchasetaxaccount.value, 'Reverse Charge Leistungen');
+  assert.equal(api.fields.vatin.value, 'IE9999999X');
+  assert.equal(api.fields.country.value, 'IE');
+});
+
 test('a never-seen payment asks rather than guesses', () => {
   const s = suggest(tx({ amount: -99, description: 'Unbekannter Laden' }), ctx({}));
   assert.equal(s.basis, 'none');
