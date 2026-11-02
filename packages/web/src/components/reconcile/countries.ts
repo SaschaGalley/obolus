@@ -1,8 +1,10 @@
 /**
  * Bookamat's country list (API docs, Grundlagen → Länder), in its groups and
- * names. Austria is not in it; Greece is GR, not EL as in the UID.
+ * names; Greece is GR, not EL as in the UID. The docs leave out Austria, but
+ * Bookamat keeps bookings with AT, so it comes first.
  */
 export const COUNTRY_GROUPS: [string, [code: string, name: string][]][] = [
+  ['Inland', [['AT', 'Österreich']]],
   ['EU', [
     ['BE', 'Belgien'], ['BG', 'Bulgarien'], ['DK', 'Dänemark'], ['DE', 'Deutschland'], ['EE', 'Estland'],
     ['FI', 'Finnland'], ['FR', 'Frankreich'], ['GR', 'Griechenland'], ['IE', 'Irland'], ['IT', 'Italien'],

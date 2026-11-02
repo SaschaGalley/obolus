@@ -90,7 +90,7 @@ test('first invoice to a client without history still gets the default delivery 
   assert.equal(s.fields.costaccount.estimated, true);
 });
 
-test('Land from the UID, but none for an Austrian one (Bookamat lists no AT) or an EU OSS number', () => {
+test('Land from the UID, but none for an Austrian one (domestic) or an EU OSS number', () => {
   const at = suggest(tx({ amount: 1200, description: 'RE 2026-014' }), ctx({ invoices: [invoice({ gross: 1200, clientVatNumber: 'ATU12345678', reverseCharge: false })] }));
   assert.equal(at.fields.vatin.value, 'ATU12345678');
   assert.equal(at.fields.country.value, null);
