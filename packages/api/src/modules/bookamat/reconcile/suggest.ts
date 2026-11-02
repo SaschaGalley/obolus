@@ -165,10 +165,13 @@ export const words = (text: string | null | undefined): string[] =>
 
 export const normalizeVatin = (v: string | null | undefined) => (v ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
-/** ISO country of a UID's prefix (Greece writes EL). */
+/**
+ * ISO country of a UID's prefix (Greece writes EL). None for EU: that is the
+ * OSS number of a company outside the EU, not a country.
+ */
 export function countryOfVatin(vatin: string | null | undefined): string | null {
   const m = /^([A-Z]{2})/.exec(normalizeVatin(vatin));
-  if (!m) return null;
+  if (!m || m[1] === 'EU') return null;
   return m[1] === 'EL' ? 'GR' : m[1];
 }
 
