@@ -83,8 +83,6 @@ const LABELS: Record<FieldKey, string> = {
   description: 'Beschreibung',
 };
 
-const MORE_FIELDS: FieldKey[] = ['countryDep', 'countryRec', 'costcentre', 'description'];
-
 /** A value as one types it into Bookamat: 21,60 · 14.10.2026. */
 function forBookamat(key: FieldKey, value: unknown): string {
   if (value == null || value === '') return '';
@@ -131,6 +129,30 @@ function liveWarnings(v: Partial<Values>, accounts: Accounts): string[] {
   return out;
 }
 
+const blank = (x: unknown) => x == null || x === '';
+
+/**
+ * Fields the chosen accounts do not need: UID and Land only for reverse charge
+ * and ZM, USt-Satz not when the USt-Konto only knows 0 %, the deductible shares
+ * not where they change nothing. A field filled in by the suggestion or by hand
+ * always shows, so it does not vanish while being cleared; hidden ones stay in
+ * the form with their values.
+ */
+function unneeded(v: Partial<Values>, initial: Values, accounts: Accounts, incoming: boolean): Set<FieldKey> {
+  const tax = accounts.tax.find((t) => t.name === v.purchasetaxaccount);
+  const cost = accounts.cost.find((c) => c.name === v.costaccount);
+  const income = cost?.group ? cost.group === '1' : incoming;
+  const full = (k: 'deductibilityTaxPercent' | 'deductibilityAmountPercent') => v[k] === 100 && initial[k] === 100;
+  const optional: FieldKey[] = ['dateDelivery', 'countryDep', 'countryRec', 'costcentre', 'description'];
+  if (!tax?.reverseCharge && !tax?.icReport) optional.push('vatin', 'country');
+  const out = new Set(optional.filter((k) => blank(v[k]) && blank(initial[k])));
+  const noTax = !blank(v.taxPercent) && Number(v.taxPercent) === 0;
+  if (noTax && tax?.taxValues.length === 1 && tax.taxValues[0] === 0) out.add('taxPercent');
+  if (noTax || (income && full('deductibilityTaxPercent'))) out.add('deductibilityTaxPercent');
+  if (income && full('deductibilityAmountPercent')) out.add('deductibilityAmountPercent');
+  return out;
+}
+
 interface Props {
   entry: MonthEntry;
   accounts: Accounts;
@@ -162,7 +184,7 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
     setAttachment({ name: file.name, data: await readBase64(file) });
   };
   const drop = useFileDrop(attach);
-  const [showMore, setShowMore] = useState(MORE_FIELDS.some((k) => s.fields[k].value != null && s.fields[k].value !== ''));
+  const [showAll, setShowAll] = useState(false);
   const [preview, setPreview] = useState<TransferPreview | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkTo, setLinkTo] = useState<number | null>(null);
@@ -186,6 +208,15 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
   }, [values, accounts, s.warnings]);
 
   const incoming = tx.amount > 0;
+  // Without a cost centre in Bookamat there is nothing to choose, not even under „weitere Felder“.
+  const hidden = unneeded(values, initialValues, accounts, incoming);
+  const more = (Object.keys(LABELS) as FieldKey[]).filter((k) => hidden.has(k) && (k !== 'costcentre' || accounts.costcentre.length));
+  const isHidden = (key: FieldKey) => hidden.has(key) && !(showAll && more.includes(key));
+  // An empty date opens on the month being reconciled, as in Bookamat.
+  const monthStart = dayjs(new Date(year, month - 1, 1));
+  const datePicker = (key: FieldKey) => (
+    <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} defaultPickerValue={values[key] ? undefined : monthStart} />
+  );
   const ofSide = (a: { group: string | null }) => !a.group || a.group === (incoming ? '1' : '2');
   const cost = accounts.cost.find((c) => c.name === values.costaccount);
   const taxOption = (t: TaxAccount) => option(t.name, t.reverseCharge ? `${t.name} (Reverse Charge)` : t.name);
@@ -305,8 +336,9 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
 
   const field = (key: FieldKey, input: React.ReactNode, span: { xs?: number; sm?: number; lg?: number } = {}, required = false) => {
     const f = s.fields[key];
+    // Hidden, not left out: the value still goes to Bookamat.
     return (
-      <Col xs={24} sm={span.sm ?? 12} lg={span.lg ?? 6} key={key}>
+      <Col xs={24} sm={span.sm ?? 12} lg={span.lg ?? 6} key={key} style={isHidden(key) ? { display: 'none' } : undefined}>
         <Form.Item
           name={key}
           label={LABELS[key]}
@@ -394,9 +426,9 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
       <Form form={form} layout="vertical" initialValues={initialValues} size="middle">
         <Row gutter={12}>
           {field('title', <Input maxLength={50} showCount />, { sm: 24, lg: 12 }, true)}
-          {field('date', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 }, true)}
-          {field('dateInvoice', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 }, invoiceDateRequired)}
-          {field('dateDelivery', <SmartDatePicker format="DD.MM.YYYY" style={{ width: '100%' }} />, { lg: 4 })}
+          {field('date', datePicker('date'), { lg: 4 }, true)}
+          {field('dateInvoice', datePicker('dateInvoice'), { lg: 4 }, invoiceDateRequired)}
+          {field('dateDelivery', datePicker('dateDelivery'), { lg: 4 })}
 
           {field('bankaccount', accounts.bank.length
             ? <Select options={withCurrent(accounts.bank.map((b) => ({ value: b, label: b })), values.bankaccount)} />
@@ -415,21 +447,17 @@ export default function BookingCard({ entry, accounts, year, month }: Props) {
           {field('vatin', <Input maxLength={20} placeholder="z. B. DE123456789" />, { lg: 4 })}
           {field('country', <Input maxLength={2} style={{ textTransform: 'uppercase' }} />, { lg: 4 })}
 
-          {showMore && (
-            <>
-              {field('countryDep', <Input maxLength={2} />, { lg: 4 })}
-              {field('countryRec', <Input maxLength={2} />, { lg: 4 })}
-              {field('costcentre', accounts.costcentre.length
-                ? <Select allowClear options={withCurrent(accounts.costcentre.map((c) => ({ value: c, label: c })), values.costcentre)} />
-                : <Input />, { lg: 4 })}
-              {field('description', <Input maxLength={500} />, { sm: 24, lg: 12 })}
-            </>
-          )}
+          {field('countryDep', <Input maxLength={2} />, { lg: 4 })}
+          {field('countryRec', <Input maxLength={2} />, { lg: 4 })}
+          {field('costcentre', accounts.costcentre.length
+            ? <Select allowClear options={withCurrent(accounts.costcentre.map((c) => ({ value: c, label: c })), values.costcentre)} />
+            : <Input />, { lg: 4 })}
+          {field('description', <Input maxLength={500} />, { sm: 24, lg: 12 })}
         </Row>
       </Form>
-      {!showMore && (
-        <Button type="link" size="small" style={{ padding: 0, marginBottom: 8, whiteSpace: 'normal', height: 'auto', textAlign: 'left' }} onClick={() => setShowMore(true)}>
-          weitere Felder (Abgangs-/Verbrauchsland, Kostenstelle, Beschreibung)
+      {more.length > 0 && (
+        <Button type="link" size="small" style={{ padding: 0, marginBottom: 8, whiteSpace: 'normal', height: 'auto', textAlign: 'left' }} onClick={() => setShowAll(!showAll)}>
+          {showAll ? 'weniger Felder' : `weitere Felder (${more.map((k) => LABELS[k]).join(', ')})`}
         </Button>
       )}
 
